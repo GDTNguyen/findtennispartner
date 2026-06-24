@@ -207,6 +207,14 @@ api.post('/pins', async (c) => {
   const pinProfile = profileFromPin(pin);
   await writePartnerPinProfile(username, pinProfile);
   await upsertUserPinIndexEntry(username, postId, pin.id);
+
+  const pinAction = existingIndex >= 0 ? 'update' : 'create';
+  console.log('[pins] Pin saved to Redis, queueing Supabase sync', {
+    action: pinAction,
+    pinId: pin.id,
+    redditUsername: username,
+    redditPostId: postId,
+  });
   void syncPartnerPinToAllCourt(pin, postId, context.subredditName);
   void syncPartnerPinProfileToOtherPosts(
     username,

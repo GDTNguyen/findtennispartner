@@ -48,6 +48,16 @@
   "dev": {
     "subreddit": "find10spartner_dev"
   },
+  "settings": {
+    "global": {
+      "allcourt-partner-pins-secret": {
+        "type": "string",
+        "label": "AllCourt partner pins secret",
+        "helpText": "Bearer token for syncing pins to allcourt.pro. Must match REDDIT_PARTNER_PINS_API_SECRET.",
+        "isSecret": true
+      }
+    }
+  },
   "permissions": {
     "http": {
       "enable": true,

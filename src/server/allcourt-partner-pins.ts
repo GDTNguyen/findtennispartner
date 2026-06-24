@@ -1,6 +1,8 @@
+import { settings } from '@devvit/web/server';
 import type { PartnerPin } from '../shared/api';
 
 const DEFAULT_ALLCOURT_ORIGIN = 'https://www.allcourt.pro';
+const PARTNER_PINS_SECRET_SETTING = 'allcourt-partner-pins-secret';
 
 function allcourtApiOrigin(): string {
   const raw = process.env.ALLCOURT_API_ORIGIN?.trim().replace(/\/$/, '');
@@ -18,8 +20,10 @@ function allcourtApiOrigin(): string {
   }
 }
 
-function partnerPinsSecret(): string | null {
-  const secret = process.env.ALLCOURT_PARTNER_PINS_SECRET?.trim();
+async function partnerPinsSecret(): Promise<string | null> {
+  const fromSettings = await settings.get<string>(PARTNER_PINS_SECRET_SETTING);
+  const fromEnv = process.env.ALLCOURT_PARTNER_PINS_SECRET?.trim();
+  const secret = (typeof fromSettings === 'string' ? fromSettings : fromEnv)?.trim();
   return secret && secret.length > 0 ? secret : null;
 }
 
@@ -32,18 +36,35 @@ function isDomainNotAllowedError(error: unknown): boolean {
   );
 }
 
+function syncContext(pin: PartnerPin, postId: string) {
+  return {
+    pinId: pin.id,
+    redditUsername: pin.username,
+    redditPostId: postId,
+  };
+}
+
 export async function syncPartnerPinToAllCourt(
   pin: PartnerPin,
   postId: string,
   subredditName: string | undefined
 ): Promise<void> {
-  const secret = partnerPinsSecret();
+  const secret = await partnerPinsSecret();
+  const context = syncContext(pin, postId);
+
   if (!secret) {
-    console.warn('[allcourt] ALLCOURT_PARTNER_PINS_SECRET not set — skipping pin sync');
+    console.warn(
+      '[allcourt] Supabase sync skipped — allcourt-partner-pins-secret not set (run: devvit settings set allcourt-partner-pins-secret)',
+      context
+    );
     return;
   }
 
   const url = `${allcourtApiOrigin()}/api/reddit/partner-pins`;
+  console.log('[allcourt] Syncing partner pin to Supabase via AllCourt API', {
+    ...context,
+    url,
+  });
 
   try {
     const res = await fetch(url, {
@@ -71,20 +92,42 @@ export async function syncPartnerPinToAllCourt(
       const text = await res.text().catch(() => '');
       throw new Error(`AllCourt API returned HTTP ${res.status}${text ? `: ${text}` : ''}`);
     }
+
+    const payload = (await res.json().catch(() => null)) as { ok?: boolean; pin?: { id?: string } } | null;
+    console.log('[allcourt] Supabase sync succeeded', {
+      ...context,
+      httpStatus: res.status,
+      supabasePinId: payload?.pin?.id ?? pin.id,
+    });
   } catch (error) {
     if (isDomainNotAllowedError(error)) {
-      console.warn('[allcourt] HTTP fetch blocked — pin saved in Redis only');
+      console.warn('[allcourt] Supabase sync failed — HTTP fetch blocked (pin saved in Redis only)', {
+        ...context,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
-    console.error('[allcourt] Failed to sync partner pin:', error);
+    console.error('[allcourt] Supabase sync failed', {
+      ...context,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
 export async function deletePartnerPinFromAllCourt(pinId: string): Promise<void> {
-  const secret = partnerPinsSecret();
-  if (!secret) return;
+  const secret = await partnerPinsSecret();
+  const context = { pinId };
+
+  if (!secret) {
+    console.warn(
+      '[allcourt] Supabase delete skipped — allcourt-partner-pins-secret not set (run: devvit settings set allcourt-partner-pins-secret)',
+      context
+    );
+    return;
+  }
 
   const url = `${allcourtApiOrigin()}/api/reddit/partner-pins?id=${encodeURIComponent(pinId)}`;
+  console.log('[allcourt] Deleting partner pin from Supabase via AllCourt API', { ...context, url });
 
   try {
     const res = await fetch(url, {
@@ -99,11 +142,22 @@ export async function deletePartnerPinFromAllCourt(pinId: string): Promise<void>
       const text = await res.text().catch(() => '');
       throw new Error(`AllCourt API returned HTTP ${res.status}${text ? `: ${text}` : ''}`);
     }
+
+    console.log('[allcourt] Supabase delete succeeded', {
+      ...context,
+      httpStatus: res.status,
+    });
   } catch (error) {
     if (isDomainNotAllowedError(error)) {
-      console.warn('[allcourt] HTTP fetch blocked — pin removed from Redis only');
+      console.warn('[allcourt] Supabase delete failed — HTTP fetch blocked (pin removed from Redis only)', {
+        ...context,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return;
     }
-    console.error('[allcourt] Failed to delete partner pin:', error);
+    console.error('[allcourt] Supabase delete failed', {
+      ...context,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
