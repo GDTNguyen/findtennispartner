@@ -23,7 +23,7 @@
     "@devvit/web": "0.13.5",
     "@hono/node-server": "2.0.3",
     "devvit": "0.13.5",
-    "hono": "4.12.21",
+    "hono": "4.12.27",
     "leaflet": "^1.9.4",
     "leaflet-smooth-zoom": "github:mutsuyuki/Leaflet.SmoothWheelZoom",
     "leaflet.markercluster": "^1.5.3",
