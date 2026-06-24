@@ -204,6 +204,22 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
         >
           AllCourtPro
         </button>
+        <span className="partner-app__footer-sep">·</span>
+        <button
+          type="button"
+          className="partner-app__footer-link"
+          onClick={() => navigateTo('https://www.allcourt.pro/terms')}
+        >
+          Terms
+        </button>
+        <span className="partner-app__footer-sep">·</span>
+        <button
+          type="button"
+          className="partner-app__footer-link"
+          onClick={() => navigateTo('https://www.allcourt.pro/privacy')}
+        >
+          Privacy
+        </button>
       </footer>
     </div>
   );

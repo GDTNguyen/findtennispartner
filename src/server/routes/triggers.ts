@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
-import type { OnAppInstallRequest, TriggerResponse } from '@devvit/web/shared';
+import type { OnAppInstallRequest, OnPostDeleteRequest, TriggerResponse } from '@devvit/web/shared';
 import { context } from '@devvit/web/server';
 import { createPost } from '../core/post';
+import { removeAllPinsForPost } from '../partner-pin-profile';
 
 export const triggers = new Hono();
 
@@ -26,5 +27,18 @@ triggers.post('/on-app-install', async (c) => {
       },
       400
     );
+  }
+});
+
+triggers.post('/on-post-delete', async (c) => {
+  try {
+    const input = await c.req.json<OnPostDeleteRequest>();
+    if (input.postId) {
+      await removeAllPinsForPost(input.postId);
+    }
+    return c.json<TriggerResponse>({}, 200);
+  } catch (error) {
+    console.error(`Error cleaning up pins on post delete: ${error}`);
+    return c.json<TriggerResponse>({}, 200);
   }
 });

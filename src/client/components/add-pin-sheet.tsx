@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { navigateTo } from '@devvit/web/client';
 import { formatPartnerPinLabel } from '../../shared/api';
 import type { AddPinDraft } from './add-pin-draft';
 
@@ -13,8 +15,18 @@ type AddPinSheetProps = {
   onChangeLocation: () => void;
 };
 
-export function AddPinSheet({
-  open,
+type AddPinSheetFormProps = Omit<AddPinSheetProps, 'open' | 'draft'> & {
+  draft: AddPinDraft;
+};
+
+export function AddPinSheet(props: AddPinSheetProps) {
+  const { open, draft } = props;
+  if (!open || !draft) return null;
+
+  return <AddPinSheetForm {...props} draft={draft} />;
+}
+
+function AddPinSheetForm({
   draft,
   saving,
   username,
@@ -23,8 +35,8 @@ export function AddPinSheet({
   onClose,
   onSubmit,
   onChangeLocation,
-}: AddPinSheetProps) {
-  if (!open || !draft) return null;
+}: AddPinSheetFormProps) {
+  const [consent, setConsent] = useState(false);
 
   const preview =
     !draft.utrLevel.trim() || !draft.locationLabel.trim()
@@ -160,6 +172,35 @@ export function AddPinSheet({
           </label>
         </fieldset>
 
+        <label className="partner-pin-sheet__consent">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+          />
+          <span>
+            I understand my Reddit username, chosen map location, level and any
+            links I add will be shown publicly and stored by AllCourtPro so my
+            pin persists across posts. I can remove my pin anytime. See the{' '}
+            <button
+              type="button"
+              className="partner-pin-sheet__inline-link"
+              onClick={() => navigateTo('https://www.allcourt.pro/terms')}
+            >
+              Terms
+            </button>{' '}
+            and{' '}
+            <button
+              type="button"
+              className="partner-pin-sheet__inline-link"
+              onClick={() => navigateTo('https://www.allcourt.pro/privacy')}
+            >
+              Privacy policy
+            </button>
+            .
+          </span>
+        </label>
+
         <div className="partner-pin-sheet__actions">
           <button type="button" className="partner-pin-sheet__secondary" onClick={onClose}>
             Cancel
@@ -167,7 +208,7 @@ export function AddPinSheet({
           <button
             type="button"
             className="partner-pin-sheet__primary"
-            disabled={!signedIn || saving}
+            disabled={!signedIn || !consent || saving}
             onClick={onSubmit}
           >
             {saving ? 'Posting…' : isUpdate ? 'Update pin' : 'Post pin'}

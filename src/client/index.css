@@ -507,6 +507,31 @@ body,
   cursor: not-allowed;
 }
 
+.partner-pin-sheet__consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.partner-pin-sheet__consent input {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.partner-pin-sheet__inline-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
 .partner-pin-sheet__actions {
   display: flex;
   justify-content: flex-end;

@@ -1,6 +1,6 @@
 import { redis } from '@devvit/web/server';
 import type { PartnerPin, PartnerPinProfile, PartnerPinSocialLinks } from '../shared/api';
-import { syncPartnerPinToAllCourt } from './allcourt-partner-pins';
+import { deletePartnerPinFromAllCourt, syncPartnerPinToAllCourt } from './allcourt-partner-pins';
 
 type UserPinIndexEntry = {
   postId: string;
@@ -95,6 +95,22 @@ export async function removeUserPinIndexEntry(username: string, postId: string):
   const index = await readUserPinIndex(username);
   const next = index.filter((entry) => entry.postId !== postId);
   await writeUserPinIndex(username, next);
+}
+
+/**
+ * Remove every pin attached to a deleted post from Redis, the per-user index,
+ * and the synced AllCourt/Supabase store. Used by the Reddit PostDelete trigger
+ * so partner data does not outlive the post it belonged to.
+ */
+export async function removeAllPinsForPost(postId: string): Promise<void> {
+  const pins = await readPins(postId);
+
+  for (const pin of pins) {
+    void deletePartnerPinFromAllCourt(pin.id);
+    await removeUserPinIndexEntry(pin.username, postId);
+  }
+
+  await redis.del(pinsRedisKey(postId));
 }
 
 export async function syncPartnerPinProfileToOtherPosts(
