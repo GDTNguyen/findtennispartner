@@ -51,10 +51,10 @@
   },
   "settings": {
     "global": {
-      "allcourt-partner-pins-secret": {
+      "supabase-service-role-key": {
         "type": "string",
-        "label": "AllCourt partner pins secret",
-        "helpText": "Bearer token for syncing pins to allcourt.pro. Must match REDDIT_PARTNER_PINS_API_SECRET.",
+        "label": "Supabase service role key",
+        "helpText": "Service role key for upserting partner pins to amspslqidldfolaborfi.supabase.co. Must match SUPABASE_SERVICE_ROLE_KEY in AllCourt Pro.",
         "isSecret": true
       }
     }
@@ -63,12 +63,15 @@
     "http": {
       "enable": true,
       "domains": [
+        "amspslqidldfolaborfi.supabase.co",
         "tile.openstreetmap.org",
         "a.tile.openstreetmap.org",
         "b.tile.openstreetmap.org",
         "c.tile.openstreetmap.org",
-        "www.allcourt.pro",
-        "challenge.allcourt.pro"
+        "a.basemaps.cartocdn.com",
+        "b.basemaps.cartocdn.com",
+        "c.basemaps.cartocdn.com",
+        "d.basemaps.cartocdn.com"
       ]
     },
     "redis": true,

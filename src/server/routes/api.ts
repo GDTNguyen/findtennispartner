@@ -11,9 +11,9 @@ import type {
 import { submitPartnerPinPost } from '../core/partner-post';
 import { fetchOsmBasemapTile } from './map-tiles';
 import {
-  deletePartnerPinFromAllCourt,
-  syncPartnerPinToAllCourt,
-} from '../allcourt-partner-pins';
+  deletePartnerPinFromSupabase,
+  syncPartnerPinToSupabase,
+} from '../supabase-partner-pins';
 import {
   profileFromPin,
   readPartnerPinProfile,
@@ -215,7 +215,7 @@ api.post('/pins', async (c) => {
     redditUsername: username,
     redditPostId: postId,
   });
-  void syncPartnerPinToAllCourt(pin, postId, context.subredditName);
+  void syncPartnerPinToSupabase(pin, postId, context.subredditName);
   void syncPartnerPinProfileToOtherPosts(
     username,
     postId,
@@ -262,7 +262,7 @@ api.delete('/pins/:pinId', async (c) => {
   await writePins(postId, nextPins);
   await removeUserPinIndexEntry(username, postId);
 
-  void deletePartnerPinFromAllCourt(pinId);
+  void deletePartnerPinFromSupabase(pinId);
 
   return c.json<DeletePinResponse>({
     type: 'delete-pin',
