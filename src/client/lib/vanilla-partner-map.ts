@@ -6,6 +6,7 @@ import type { PartnerPin } from '../../shared/api';
 import {
   CLUSTER_RADIUS_PX,
   DISABLE_CLUSTERING_AT_ZOOM,
+  LOCATION_SEARCH_ZOOM,
   STANDARD_BASEMAP_ATTRIBUTION,
   STANDARD_BASEMAP_URL,
   WORLD_VIEW_CENTER,
@@ -22,6 +23,7 @@ export type VanillaPartnerMapHandle = {
   cluster: L.MarkerClusterGroup;
   setPlacementMode: (active: boolean) => void;
   syncPins: (pins: PartnerPin[], username: string | null) => void;
+  flyTo: (lat: number, lng: number, zoom?: number) => void;
   destroy: () => void;
 };
 
@@ -140,6 +142,10 @@ export function mountVanillaPartnerMap(
     container.classList.toggle('partner-map-root--placing', active);
   };
 
+  const flyTo = (lat: number, lng: number, zoom = LOCATION_SEARCH_ZOOM) => {
+    map.flyTo([lat, lng], zoom, { duration: 0.85 });
+  };
+
   const destroy = () => {
     resizeObserver?.disconnect();
     map.off('click', onMapClick);
@@ -155,6 +161,7 @@ export function mountVanillaPartnerMap(
     cluster,
     setPlacementMode,
     syncPins,
+    flyTo,
     destroy,
   };
 }

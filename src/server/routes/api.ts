@@ -5,19 +5,20 @@ import type {
   CreatePinResponse,
   CreatePartnerPostResponse,
   DeletePinResponse,
+  GeocodeSearchResponse,
   InitResponse,
   PartnerPin,
 } from '../../shared/api';
 import { submitPartnerPinPost } from '../core/partner-post';
+import { searchPlaces } from './geocode';
 import { fetchOsmBasemapTile } from './map-tiles';
 import {
-  deletePartnerPinFromSupabase,
   syncPartnerPinToSupabase,
 } from '../supabase-partner-pins';
 import {
   profileFromPin,
   readPartnerPinProfile,
-  removeUserPinIndexEntry,
+  removeAllPartnerDataForUser,
   syncPartnerPinProfileToOtherPosts,
   upsertUserPinIndexEntry,
   writePartnerPinProfile,
@@ -73,6 +74,27 @@ function sanitizeSocialLinks(raw: CreatePinRequest['socialLinks']): PartnerPin['
 }
 
 export const api = new Hono();
+
+api.get('/geocode', async (c) => {
+  const q = c.req.query('q')?.trim() ?? '';
+  if (q.length < 2) {
+    return c.json<GeocodeSearchResponse>({ type: 'geocode-search', results: [] });
+  }
+  if (q.length > 280) {
+    return c.json<ErrorResponse>({ status: 'error', message: 'Query too long.' }, 400);
+  }
+
+  try {
+    const results = await searchPlaces(q, 6);
+    return c.json<GeocodeSearchResponse>({ type: 'geocode-search', results });
+  } catch (error) {
+    console.error('Geocode search error:', error);
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'Could not search for that location.' },
+      502
+    );
+  }
+});
 
 api.get('/map-tiles/:z/:x/:y', async (c) => {
   try {
@@ -258,15 +280,12 @@ api.delete('/pins/:pinId', async (c) => {
     );
   }
 
-  const nextPins = pins.filter((pin) => pin.id !== pinId);
-  await writePins(postId, nextPins);
-  await removeUserPinIndexEntry(username, postId);
-
-  void deletePartnerPinFromSupabase(pinId);
+  const nextPins = await removeAllPartnerDataForUser(username, postId);
 
   return c.json<DeletePinResponse>({
     type: 'delete-pin',
     pins: nextPins,
+    pinProfile: null,
   });
 });
 

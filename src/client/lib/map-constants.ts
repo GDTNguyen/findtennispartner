@@ -7,3 +7,5 @@ export const STANDARD_BASEMAP_ATTRIBUTION =
 
 export const CLUSTER_RADIUS_PX = 52;
 export const DISABLE_CLUSTERING_AT_ZOOM = 14;
+
+export const LOCATION_SEARCH_ZOOM = 13;

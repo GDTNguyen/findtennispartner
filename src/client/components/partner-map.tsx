@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
-import type { PartnerPin } from '../../shared/api';
+import { useCallback, useEffect, useRef } from 'react';
+import type { GeocodeSearchHit, PartnerPin } from '../../shared/api';
+import { LOCATION_SEARCH_ZOOM } from '../lib/map-constants';
 import { mountVanillaPartnerMap, type VanillaPartnerMapHandle } from '../lib/vanilla-partner-map';
+import { LocationSearch } from './location-search';
 
 type PartnerMapProps = {
   pins: PartnerPin[];
@@ -61,8 +63,16 @@ export function PartnerMap({
     mapHandleRef.current?.syncPins(pins, username);
   }, [pins, username]);
 
+  const handleLocationSelect = useCallback((hit: GeocodeSearchHit) => {
+    const lat = Number.parseFloat(hit.lat);
+    const lng = Number.parseFloat(hit.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    mapHandleRef.current?.flyTo(lat, lng, LOCATION_SEARCH_ZOOM);
+  }, []);
+
   return (
     <div className="partner-map-shell">
+      <LocationSearch onSelect={handleLocationSelect} />
       <div ref={containerRef} className="partner-map-root" />
       {placementMode ? (
         <div className="partner-map-placement-hint">Tap the map to place your pin</div>

@@ -88,7 +88,11 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
 
   const handleDeletePin = useCallback(
     async (pinId: string) => {
-      await deletePin(pinId);
+      const ok = await deletePin(pinId);
+      if (ok) {
+        setMyPinSheetOpen(false);
+      }
+      return ok;
     },
     [deletePin]
   );
@@ -178,10 +182,16 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
       ) : null}
 
       <MyPinSheet
+        key={myPin?.id ?? 'no-pin'}
         open={myPinSheetOpen}
         pin={myPin}
+        deleting={saving}
         onClose={() => setMyPinSheetOpen(false)}
         onEdit={editMyPin}
+        onDelete={() => {
+          if (!myPin) return;
+          void handleDeletePin(myPin.id);
+        }}
       />
 
       <AddPinSheet

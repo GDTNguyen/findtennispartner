@@ -139,7 +139,7 @@ body,
 
 .partner-app__map-loading {
   position: absolute;
-  right: 1.75rem;
+  left: 1.75rem;
   top: 0.75rem;
   z-index: 600;
   border-radius: 9999px;
@@ -221,6 +221,118 @@ body,
   font-weight: 600;
   color: white;
   pointer-events: none;
+}
+
+.partner-map-search {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 650;
+  width: min(100% - 1.5rem, 22rem);
+}
+
+.partner-map-search__form {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.partner-map-search__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.partner-map-search__field {
+  display: flex;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.3rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);
+}
+
+.partner-map-search__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+
+.partner-map-search__input:focus {
+  outline: none;
+}
+
+.partner-map-search__submit {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9999px;
+  background: #d93900;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+}
+
+.partner-map-search__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.partner-map-search__results {
+  margin: 0.35rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.partner-map-search__result {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #334155;
+  cursor: pointer;
+}
+
+.partner-map-search__result:hover,
+.partner-map-search__result:focus-visible {
+  background: #f1f5f9;
+  outline: none;
+}
+
+.partner-map-search__error,
+.partner-map-search__empty {
+  margin: 0.35rem 0 0;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.partner-map-search__error {
+  color: #b91c1c;
 }
 
 .partner-pin-divicon {
@@ -563,4 +675,24 @@ body,
 .partner-pin-sheet__primary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.partner-pin-sheet__delete {
+  border: 1px solid #fecaca;
+  border-radius: 9999px;
+  background: #fff;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+.partner-pin-sheet__delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.partner-pin-sheet__delete-confirm {
+  margin-top: 1rem;
 }

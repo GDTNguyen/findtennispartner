@@ -6,12 +6,15 @@ import { draftPartnerPost } from '../lib/draft-partner-post';
 type MyPinSheetProps = {
   open: boolean;
   pin: PartnerPin | null;
+  deleting: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 };
 
-export function MyPinSheet({ open, pin, onClose, onEdit }: MyPinSheetProps) {
+export function MyPinSheet({ open, pin, deleting, onClose, onEdit, onDelete }: MyPinSheetProps) {
   const [posting, setPosting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handlePost = useCallback(() => {
     if (!pin) return;
@@ -20,6 +23,11 @@ export function MyPinSheet({ open, pin, onClose, onEdit }: MyPinSheetProps) {
       setPosting(false);
     });
   }, [pin]);
+
+  const handleClose = useCallback(() => {
+    setConfirmDelete(false);
+    onClose();
+  }, [onClose]);
 
   if (!open || !pin) return null;
 
@@ -34,11 +42,11 @@ export function MyPinSheet({ open, pin, onClose, onEdit }: MyPinSheetProps) {
 
   return (
     <div className="partner-pin-sheet" role="dialog" aria-modal="true" aria-label="My pin">
-      <button type="button" className="partner-pin-sheet__backdrop" onClick={onClose} />
+      <button type="button" className="partner-pin-sheet__backdrop" onClick={handleClose} />
       <div className="partner-pin-sheet__panel">
         <header className="partner-pin-sheet__header">
           <h2 className="partner-pin-sheet__title">My pin</h2>
-          <button type="button" className="partner-pin-sheet__close" onClick={onClose}>
+          <button type="button" className="partner-pin-sheet__close" onClick={handleClose}>
             Close
           </button>
         </header>
@@ -67,19 +75,59 @@ export function MyPinSheet({ open, pin, onClose, onEdit }: MyPinSheetProps) {
           </p>
         </div>
 
-        <footer className="partner-pin-sheet__actions">
-          <button
-            type="button"
-            className="partner-pin-sheet__post"
-            disabled={posting}
-            onClick={handlePost}
-          >
-            {posting ? 'Opening…' : 'Post to subreddit'}
-          </button>
-          <button type="button" className="partner-pin-sheet__secondary" onClick={onEdit}>
-            Edit pin
-          </button>
-        </footer>
+        {confirmDelete ? (
+          <div className="partner-pin-sheet__delete-confirm">
+            <p className="partner-pin-sheet__hint">
+              This removes your pin from every post and clears your saved profile. You can drop a
+              new pin anytime.
+            </p>
+            <div className="partner-pin-sheet__actions">
+              <button
+                type="button"
+                className="partner-pin-sheet__secondary"
+                disabled={deleting}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="partner-pin-sheet__delete"
+                disabled={deleting}
+                onClick={onDelete}
+              >
+                {deleting ? 'Removing…' : 'Yes, remove my pin'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <footer className="partner-pin-sheet__actions">
+            <button
+              type="button"
+              className="partner-pin-sheet__post"
+              disabled={posting || deleting}
+              onClick={handlePost}
+            >
+              {posting ? 'Opening…' : 'Post to subreddit'}
+            </button>
+            <button
+              type="button"
+              className="partner-pin-sheet__secondary"
+              disabled={deleting}
+              onClick={onEdit}
+            >
+              Edit pin
+            </button>
+            <button
+              type="button"
+              className="partner-pin-sheet__delete"
+              disabled={deleting}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete pin
+            </button>
+          </footer>
+        )}
       </div>
     </div>
   );

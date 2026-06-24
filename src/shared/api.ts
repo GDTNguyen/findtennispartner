@@ -1,3 +1,14 @@
+export type GeocodeSearchHit = {
+  lat: string;
+  lon: string;
+  display_name: string;
+};
+
+export type GeocodeSearchResponse = {
+  type: 'geocode-search';
+  results: GeocodeSearchHit[];
+};
+
 export type PartnerPinSocialLinks = {
   instagram?: string;
   x?: string;
@@ -51,6 +62,7 @@ export type CreatePinResponse = {
 export type DeletePinResponse = {
   type: 'delete-pin';
   pins: PartnerPin[];
+  pinProfile: null;
 };
 
 export type CreatePartnerPostResponse = {

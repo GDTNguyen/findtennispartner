@@ -106,6 +106,7 @@ export const usePartnerPins = () => {
         setState((prev) => ({
           ...prev,
           pins: data.pins,
+          pinProfile: data.pinProfile ?? null,
           saving: false,
           error: null,
         }));

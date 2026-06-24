@@ -97,6 +97,46 @@ export async function removeUserPinIndexEntry(username: string, postId: string):
   await writeUserPinIndex(username, next);
 }
 
+export async function removePartnerPinProfile(username: string): Promise<void> {
+  await redis.del(profileRedisKey(username));
+}
+
+/**
+ * Remove every pin for a user across all posts, clear their cached profile,
+ * and drop the per-user post index. Returns the remaining pins on currentPostId.
+ */
+export async function removeAllPartnerDataForUser(
+  username: string,
+  currentPostId: string
+): Promise<PartnerPin[]> {
+  const index = await readUserPinIndex(username);
+  const postIds = new Set(index.map((entry) => entry.postId));
+  postIds.add(currentPostId);
+
+  const pinIdsToDelete = new Set<string>();
+
+  for (const postId of postIds) {
+    const pins = await readPins(postId);
+    const userPin = pins.find((pin) => pin.username === username);
+    if (userPin) {
+      pinIdsToDelete.add(userPin.id);
+    }
+    const nextPins = pins.filter((pin) => pin.username !== username);
+    if (nextPins.length !== pins.length) {
+      await writePins(postId, nextPins);
+    }
+  }
+
+  await removePartnerPinProfile(username);
+  await redis.del(userPinIndexRedisKey(username));
+
+  for (const pinId of pinIdsToDelete) {
+    void deletePartnerPinFromSupabase(pinId);
+  }
+
+  return readPins(currentPostId);
+}
+
 /**
  * Remove every pin attached to a deleted post from Redis, the per-user index,
  * and the synced Supabase store. Used by the Reddit PostDelete trigger
