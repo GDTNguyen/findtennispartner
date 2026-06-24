@@ -23,12 +23,17 @@
     "@hono/node-server": "2.0.3",
     "devvit": "0.13.5",
     "hono": "4.12.21",
+    "leaflet": "^1.9.4",
+    "leaflet-smooth-zoom": "github:mutsuyuki/Leaflet.SmoothWheelZoom",
+    "leaflet.markercluster": "^1.5.3",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.0",
+    "@types/leaflet": "^1.9.21",
+    "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

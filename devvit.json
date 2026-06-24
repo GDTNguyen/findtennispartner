@@ -47,5 +47,24 @@
   },
   "dev": {
     "subreddit": "find10spartner_dev"
+  },
+  "permissions": {
+    "http": {
+      "enable": true,
+      "domains": [
+        "tile.openstreetmap.org",
+        "a.tile.openstreetmap.org",
+        "b.tile.openstreetmap.org",
+        "c.tile.openstreetmap.org",
+        "www.allcourt.pro",
+        "challenge.allcourt.pro"
+      ]
+    },
+    "redis": true,
+    "reddit": {
+      "enable": true,
+      "scope": "user",
+      "asUser": ["SUBMIT_POST"]
+    }
   }
 }
