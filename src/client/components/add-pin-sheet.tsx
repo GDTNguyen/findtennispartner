@@ -9,6 +9,7 @@ type AddPinSheetProps = {
   saving: boolean;
   username: string | null;
   isUpdate: boolean;
+  error: string | null;
   onChange: (draft: AddPinDraft) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -31,6 +32,7 @@ function AddPinSheetForm({
   saving,
   username,
   isUpdate,
+  error,
   onChange,
   onClose,
   onSubmit,
@@ -60,6 +62,12 @@ function AddPinSheetForm({
             ×
           </button>
         </div>
+
+        {error ? (
+          <p className="partner-pin-sheet__error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         {!signedIn ? (
           <p className="partner-pin-sheet__notice">

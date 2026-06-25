@@ -7,7 +7,7 @@ import L from 'leaflet';
  * and the panels stay grey. This layer funnels tile loads through a small
  * concurrency queue with retries so the basemap fills in reliably.
  */
-const MAX_CONCURRENT_TILE_REQUESTS = 2;
+const MAX_CONCURRENT_TILE_REQUESTS = 3;
 const MAX_TILE_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 250;
 

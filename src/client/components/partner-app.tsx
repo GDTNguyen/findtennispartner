@@ -67,10 +67,11 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
   }, []);
 
   const closeSheet = useCallback(() => {
+    clearError();
     setSheetOpen(false);
     setDraft(null);
     setPlacementMode(false);
-  }, []);
+  }, [clearError]);
 
   const submitPin = useCallback(async () => {
     if (!draft) return;
@@ -82,19 +83,21 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
       socialLinks: draft.socialLinks,
     });
     if (ok) {
+      clearError();
       closeSheet();
     }
-  }, [closeSheet, createPin, draft]);
+  }, [clearError, closeSheet, createPin, draft]);
 
   const handleDeletePin = useCallback(
     async (pinId: string) => {
       const ok = await deletePin(pinId);
       if (ok) {
+        clearError();
         setMyPinSheetOpen(false);
       }
       return ok;
     },
-    [deletePin]
+    [clearError, deletePin]
   );
 
   const handleDraftPost = useCallback(
@@ -155,7 +158,7 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
         </div>
       </header>
 
-      {error ? (
+      {error && !sheetOpen && !myPinSheetOpen ? (
         <p className="partner-app__error" role="alert">
           {error}
         </p>
@@ -186,7 +189,11 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
         open={myPinSheetOpen}
         pin={myPin}
         deleting={saving}
-        onClose={() => setMyPinSheetOpen(false)}
+        error={error}
+        onClose={() => {
+          clearError();
+          setMyPinSheetOpen(false);
+        }}
         onEdit={editMyPin}
         onDelete={() => {
           if (!myPin) return;
@@ -200,6 +207,7 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
         saving={saving}
         username={username}
         isUpdate={!!myPin}
+        error={error}
         onChange={setDraft}
         onClose={closeSheet}
         onSubmit={() => void submitPin()}

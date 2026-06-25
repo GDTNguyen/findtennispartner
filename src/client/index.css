@@ -204,6 +204,14 @@ body,
   font-family: inherit;
 }
 
+.partner-map-root .leaflet-tile-container {
+  will-change: transform;
+}
+
+.partner-map-root .leaflet-fade-anim .leaflet-tile {
+  transition: opacity 0.2s linear;
+}
+
 .partner-map-root--placing {
   cursor: crosshair;
 }
@@ -561,6 +569,16 @@ body,
   margin-top: 0.75rem;
   font-size: 0.875rem;
   color: #475569;
+}
+
+.partner-pin-sheet__error {
+  margin-top: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.875rem;
+  color: #b91c1c;
 }
 
 .partner-pin-sheet__field {

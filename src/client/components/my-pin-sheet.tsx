@@ -7,12 +7,13 @@ type MyPinSheetProps = {
   open: boolean;
   pin: PartnerPin | null;
   deleting: boolean;
+  error: string | null;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
 };
 
-export function MyPinSheet({ open, pin, deleting, onClose, onEdit, onDelete }: MyPinSheetProps) {
+export function MyPinSheet({ open, pin, deleting, error, onClose, onEdit, onDelete }: MyPinSheetProps) {
   const [posting, setPosting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -50,6 +51,12 @@ export function MyPinSheet({ open, pin, deleting, onClose, onEdit, onDelete }: M
             Close
           </button>
         </header>
+
+        {error ? (
+          <p className="partner-pin-sheet__error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         <div className="partner-pin-sheet__body">
           <p className="partner-pin-sheet__label">{label}</p>

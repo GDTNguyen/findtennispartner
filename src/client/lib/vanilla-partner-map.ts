@@ -25,6 +25,9 @@ import {
 } from './map-load-status';
 import { reportMapLog } from './report-map-log';
 import { createThrottledTileLayer } from './leaflet/throttled-tile-layer';
+import './leaflet/register-smooth-wheel-zoom';
+import { registerTrackpadPinchZoom } from './leaflet/register-trackpad-pinch-zoom';
+import { registerPinchPanHandoff } from './leaflet/register-pinch-pan-handoff';
 
 export type { MapLoadStatus } from './map-load-status';
 
@@ -137,15 +140,24 @@ export function mountVanillaPartnerMap(
   logMap('Mounting map');
 
   const map = L.map(container, {
-    scrollWheelZoom: true,
+    scrollWheelZoom: false,
+    smoothWheelZoom: 'center',
+    smoothSensitivity: 1,
     worldCopyJump: true,
     zoomAnimation: true,
     fadeAnimation: true,
+    zoomSnap: 0,
+    zoomDelta: 0.5,
+    bounceAtZoomLimits: false,
     dragging: true,
-    touchZoom: true,
-    doubleClickZoom: true,
+    touchZoom: 'center',
+    doubleClickZoom: 'center',
     inertia: true,
+    tapTolerance: 18,
   }).setView(WORLD_VIEW_CENTER, WORLD_VIEW_ZOOM);
+
+  const removePinchPanHandoff = registerPinchPanHandoff(map);
+  const removeTrackpadPinchZoom = registerTrackpadPinchZoom(map);
 
   const publishZoom = () => {
     options.onZoomChange?.(map.getZoom());
@@ -154,8 +166,9 @@ export function mountVanillaPartnerMap(
   const tileLayer = createThrottledTileLayer(STANDARD_BASEMAP_URL, {
     maxZoom: 19,
     attribution: STANDARD_BASEMAP_ATTRIBUTION,
-    updateWhenZooming: false,
-    keepBuffer: 1,
+    updateWhenZooming: true,
+    updateWhenIdle: true,
+    keepBuffer: 2,
   }).addTo(map);
 
   const reportTileStatus = () => {
@@ -294,7 +307,12 @@ export function mountVanillaPartnerMap(
     queueRemeasure();
   });
 
+  map.on('zoom', publishZoom);
   map.on('zoomend', publishZoom);
+
+  const panToPin = (lat: number, lng: number) => {
+    map.panTo([lat, lng], { animate: true, duration: 0.45 });
+  };
 
   const syncPins = (pins: PartnerPin[], username: string | null) => {
     cluster.clearLayers();
@@ -307,6 +325,10 @@ export function mountVanillaPartnerMap(
       marker.bindPopup(buildPartnerPinPopupHtml(pin, isMine), {
         className: 'partner-pin-popup',
         maxWidth: 280,
+      });
+      marker.on('click', () => {
+        if (placementMode) return;
+        panToPin(pin.lat, pin.lng);
       });
       cluster.addLayer(marker);
     }
@@ -324,7 +346,10 @@ export function mountVanillaPartnerMap(
   const destroy = () => {
     window.clearTimeout(tileFailureTimer);
     resizeObserver?.disconnect();
+    removePinchPanHandoff();
+    removeTrackpadPinchZoom();
     map.off('click', onMapClick);
+    map.off('zoom', publishZoom);
     map.off('zoomend', publishZoom);
     map.getContainer().removeEventListener('click', onPopupClick);
     cluster.clearLayers();

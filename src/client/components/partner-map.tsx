@@ -86,7 +86,9 @@ export function PartnerMap({
     <div className="partner-map-shell">
       <LocationSearch onSelect={handleLocationSelect} />
       <div ref={containerRef} className="partner-map-root" />
-      {mapZoom !== null ? <div className="partner-map-zoom-badge">Zoom {mapZoom}</div> : null}
+      {mapZoom !== null ? (
+        <div className="partner-map-zoom-badge">Zoom {mapZoom.toFixed(1)}</div>
+      ) : null}
       <div
         className={`partner-map-load-status partner-map-load-status--${mapLoadTone}`}
         role="status"
