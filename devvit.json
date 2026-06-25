@@ -64,10 +64,6 @@
       "enable": true,
       "domains": [
         "amspslqidldfolaborfi.supabase.co",
-        "tile.openstreetmap.org",
-        "a.tile.openstreetmap.org",
-        "b.tile.openstreetmap.org",
-        "c.tile.openstreetmap.org",
         "a.basemaps.cartocdn.com",
         "b.basemaps.cartocdn.com",
         "c.basemaps.cartocdn.com",

@@ -97,16 +97,23 @@ api.get('/geocode', async (c) => {
 });
 
 api.get('/map-tiles/:z/:x/:y', async (c) => {
+  const z = c.req.param('z');
+  const x = c.req.param('x');
+  const y = c.req.param('y');
+  console.log('[find10spartner:map-tiles] Tile request', { z, x, y });
+
   try {
-    const upstream = await fetchOsmBasemapTile(
-      c.req.param('z'),
-      c.req.param('x'),
-      c.req.param('y')
-    );
+    const upstream = await fetchOsmBasemapTile(z, x, y);
     if (!upstream) {
       return c.text('Invalid tile coordinates', 400);
     }
     if (!upstream.ok) {
+      console.error('[find10spartner:map-tiles] Proxy returning 404', {
+        z,
+        x,
+        y,
+        upstreamStatus: upstream.status,
+      });
       return c.text('Tile not found', 404);
     }
 
@@ -115,9 +122,35 @@ api.get('/map-tiles/:z/:x/:y', async (c) => {
     c.header('Cache-Control', 'public, max-age=86400');
     return c.body(body);
   } catch (error) {
-    console.error('Map tile proxy error:', error);
+    console.error('[find10spartner:map-tiles] Map tile proxy error:', {
+      z,
+      x,
+      y,
+      error,
+    });
     return c.text('Failed to load map tile', 502);
   }
+});
+
+api.post('/map-log', async (c) => {
+  let body: { level?: string; message?: string; detail?: Record<string, unknown> };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false }, 400);
+  }
+
+  const message = typeof body.message === 'string' ? body.message : 'Map log';
+  const detail = body.detail ?? {};
+  const prefix = '[find10spartner:map]';
+
+  if (body.level === 'error') {
+    console.error(`${prefix} ${message}`, detail);
+  } else {
+    console.log(`${prefix} ${message}`, detail);
+  }
+
+  return c.json({ ok: true });
 });
 
 api.get('/init', async (c) => {

@@ -18,6 +18,16 @@ import {
   createPartnerPinIcon,
 } from './partner-pin-map';
 
+import {
+  INITIAL_MAP_LOAD_STATUS,
+  type MapLoadStatus,
+  type MapTileError,
+} from './map-load-status';
+import { reportMapLog } from './report-map-log';
+import { createThrottledTileLayer } from './leaflet/throttled-tile-layer';
+
+export type { MapLoadStatus } from './map-load-status';
+
 export type VanillaPartnerMapHandle = {
   map: L.Map;
   cluster: L.MarkerClusterGroup;
@@ -26,6 +36,55 @@ export type VanillaPartnerMapHandle = {
   flyTo: (lat: number, lng: number, zoom?: number) => void;
   destroy: () => void;
 };
+
+const MAP_LOG_PREFIX = '[find10spartner:map]';
+
+function logMap(message: string, detail?: Record<string, unknown>, level: 'info' | 'error' = 'info') {
+  reportMapLog(level, message, detail);
+  if (detail === undefined) {
+    console.log(`${MAP_LOG_PREFIX} ${message}`);
+    return;
+  }
+  if (level === 'error') {
+    console.error(`${MAP_LOG_PREFIX} ${message}`, detail);
+    return;
+  }
+  console.log(`${MAP_LOG_PREFIX} ${message}`, detail);
+}
+
+async function probeFailedTile(url: string) {
+  try {
+    const response = await fetch(url);
+    const contentType = response.headers.get('content-type') ?? '';
+    let bodyPreview = '';
+    if (contentType.includes('image')) {
+      bodyPreview = `[image body, ${response.headers.get('content-length') ?? 'unknown'} bytes]`;
+    } else {
+      bodyPreview = (await response.text()).slice(0, 240);
+    }
+
+    logMap(
+      'Basemap tile probe',
+      {
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        contentType,
+        bodyPreview,
+      },
+      'error'
+    );
+  } catch (error) {
+    logMap(
+      'Basemap tile probe request failed',
+      {
+        url,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'error'
+    );
+  }
+}
 
 function remeasureLeafletMap(map: L.Map) {
   try {
@@ -46,9 +105,36 @@ export function mountVanillaPartnerMap(
     onMapClick: (lat: number, lng: number) => void;
     onDeletePin: (pinId: string) => void;
     onDraftPost: (pinId: string) => void;
+    onLoadStatusChange?: (status: MapLoadStatus) => void;
+    onZoomChange?: (zoom: number) => void;
   }
 ): VanillaPartnerMapHandle {
   container.replaceChildren();
+
+  let tilesLoaded = 0;
+  let tilesFailed = 0;
+  const errors: MapTileError[] = [];
+  let loadStatus: MapLoadStatus = { ...INITIAL_MAP_LOAD_STATUS };
+
+  const pushError = (error: MapTileError) => {
+    errors.push(error);
+    if (errors.length > 25) {
+      errors.shift();
+    }
+  };
+
+  const publishStatus = (phase: MapLoadStatus['phase']) => {
+    loadStatus = {
+      phase,
+      tilesLoaded,
+      tilesFailed,
+      errors: [...errors],
+    };
+    options.onLoadStatusChange?.(loadStatus);
+  };
+
+  publishStatus('loading');
+  logMap('Mounting map');
 
   const map = L.map(container, {
     scrollWheelZoom: true,
@@ -61,10 +147,88 @@ export function mountVanillaPartnerMap(
     inertia: true,
   }).setView(WORLD_VIEW_CENTER, WORLD_VIEW_ZOOM);
 
-  L.tileLayer(STANDARD_BASEMAP_URL, {
+  const publishZoom = () => {
+    options.onZoomChange?.(map.getZoom());
+  };
+
+  const tileLayer = createThrottledTileLayer(STANDARD_BASEMAP_URL, {
     maxZoom: 19,
     attribution: STANDARD_BASEMAP_ATTRIBUTION,
+    updateWhenZooming: false,
+    keepBuffer: 1,
   }).addTo(map);
+
+  const reportTileStatus = () => {
+    if (tilesLoaded > 0) {
+      publishStatus('rendered');
+      return;
+    }
+    if (tilesFailed > 0) {
+      publishStatus('failed');
+    }
+  };
+
+  tileLayer.on('loading', () => {
+    if (loadStatus.phase === 'loading') return;
+    publishStatus('rendering');
+    logMap('Basemap tiles loading');
+  });
+
+  tileLayer.on('tileload', (event) => {
+    tilesLoaded += 1;
+    if (tilesLoaded === 1) {
+      logMap('First basemap tile loaded', { url: event.tile.src });
+    }
+    reportTileStatus();
+  });
+
+  tileLayer.on('tileerror', (event) => {
+    tilesFailed += 1;
+    const url = event.tile.src;
+    pushError({
+      url,
+      at: new Date().toISOString(),
+      message: 'Basemap tile failed to load',
+    });
+    logMap('Basemap tile failed', {
+      url,
+      loaded: tilesLoaded,
+      failed: tilesFailed,
+    }, 'error');
+    if (tilesFailed === 1) {
+      void probeFailedTile(url);
+    }
+    reportTileStatus();
+  });
+
+  tileLayer.on('load', () => {
+    logMap('Visible basemap tiles finished loading', {
+      loaded: tilesLoaded,
+      failed: tilesFailed,
+    });
+    if (tilesLoaded > 0) {
+      publishStatus('rendered');
+      return;
+    }
+    reportTileStatus();
+  });
+
+  const tileFailureTimer = window.setTimeout(() => {
+    if (loadStatus.phase === 'loading' || loadStatus.phase === 'rendering') {
+      if (tilesLoaded === 0 && tilesFailed > 0) {
+        pushError({
+          url: STANDARD_BASEMAP_URL,
+          at: new Date().toISOString(),
+          message: 'No basemap tiles loaded within 8 seconds',
+        });
+        publishStatus('failed');
+        logMap('No basemap tiles loaded after timeout', {
+          loaded: tilesLoaded,
+          failed: tilesFailed,
+        }, 'error');
+      }
+    }
+  }, 8000);
 
   const cluster = L.markerClusterGroup({
     chunkedLoading: true,
@@ -119,7 +283,18 @@ export function mountVanillaPartnerMap(
     resizeObserver.observe(container);
   }
 
-  map.whenReady(queueRemeasure);
+  map.whenReady(() => {
+    publishStatus('rendering');
+    publishZoom();
+    logMap('Leaflet map ready', {
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      tileUrl: STANDARD_BASEMAP_URL,
+    });
+    queueRemeasure();
+  });
+
+  map.on('zoomend', publishZoom);
 
   const syncPins = (pins: PartnerPin[], username: string | null) => {
     cluster.clearLayers();
@@ -147,8 +322,10 @@ export function mountVanillaPartnerMap(
   };
 
   const destroy = () => {
+    window.clearTimeout(tileFailureTimer);
     resizeObserver?.disconnect();
     map.off('click', onMapClick);
+    map.off('zoomend', publishZoom);
     map.getContainer().removeEventListener('click', onPopupClick);
     cluster.clearLayers();
     map.remove();
