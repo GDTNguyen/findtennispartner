@@ -28,6 +28,7 @@ body,
 .partner-app--splash {
   min-height: auto;
   height: auto;
+  overscroll-behavior: contain;
 }
 
 .partner-app--splash .partner-app__map-wrap {
@@ -322,6 +323,8 @@ body,
   min-height: 24rem;
   container-type: inline-size;
   container-name: partner-map;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .partner-map-root {
@@ -337,6 +340,13 @@ body,
 
 .partner-map-root.leaflet-container {
   font-family: inherit;
+  touch-action: none;
+}
+
+.partner-map-root .leaflet-pane,
+.partner-map-root .leaflet-map-pane,
+.partner-map-root .leaflet-tile-pane {
+  touch-action: none;
 }
 
 .partner-map-root .leaflet-tile-container {

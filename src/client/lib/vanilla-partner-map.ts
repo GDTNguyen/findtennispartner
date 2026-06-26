@@ -35,8 +35,7 @@ import { createThrottledTileLayer } from './leaflet/throttled-tile-layer';
 import './leaflet/register-smooth-wheel-zoom';
 import { registerMobileMapTouch, mobileMapInteractionOptions } from './leaflet/register-mobile-map-touch';
 import { registerTrackpadPinchZoom } from './leaflet/register-trackpad-pinch-zoom';
-import { registerPinchPanHandoff } from './leaflet/register-pinch-pan-handoff';
-import { prefersNativeTouchPinch, prefersSmoothWheelZoom } from './leaflet/touch-capabilities';
+import { prefersSmoothWheelZoom } from './leaflet/touch-capabilities';
 
 export type { MapLoadStatus } from './map-load-status';
 
@@ -148,7 +147,6 @@ export function mountVanillaPartnerMap(
   publishStatus('loading');
   logMap('Mounting map');
 
-  const useNativeTouchPinch = prefersNativeTouchPinch();
   const useSmoothWheelZoom = prefersSmoothWheelZoom();
   const touchOptions = mobileMapInteractionOptions();
 
@@ -172,7 +170,6 @@ export function mountVanillaPartnerMap(
   }).setView(WORLD_VIEW_CENTER, WORLD_VIEW_ZOOM);
 
   const removeMobileMapTouch = registerMobileMapTouch(map);
-  const removePinchPanHandoff = useNativeTouchPinch ? registerPinchPanHandoff(map) : () => {};
   const removeTrackpadPinchZoom = useSmoothWheelZoom ? registerTrackpadPinchZoom(map) : () => {};
 
   const publishZoom = () => {
@@ -381,7 +378,6 @@ export function mountVanillaPartnerMap(
     resizeObserver?.disconnect();
     removeClusterZoomHandlers();
     removeMobileMapTouch();
-    removePinchPanHandoff();
     removeTrackpadPinchZoom();
     map.off('click', onMapClick);
     map.off('zoom', publishZoom);
