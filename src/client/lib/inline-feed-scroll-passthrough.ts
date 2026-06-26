@@ -1,7 +1,8 @@
 import { isInlinePresentation } from './devvit-presentation';
 
 function wheelDeltaPixels(event: WheelEvent): { x: number; y: number } {
-  let { deltaX, deltaY, deltaMode } = event;
+  const { deltaMode } = event;
+  let { deltaX, deltaY } = event;
 
   if (deltaMode === WheelEvent.DOM_DELTA_LINE) {
     deltaX *= 16;

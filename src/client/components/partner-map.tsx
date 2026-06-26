@@ -67,7 +67,7 @@ export function PartnerMap({
       mapHandleRef.current?.destroy();
       mapHandleRef.current = null;
     };
-  }, []);
+  }, [previewMode]);
 
   useEffect(() => {
     mapHandleRef.current?.setPlacementMode(placementMode);
