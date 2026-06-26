@@ -1,15 +1,18 @@
-import { useCallback, useState, type MouseEvent } from 'react';
+import { useCallback, useRef, useState, type MouseEvent } from 'react';
 import { navigateTo } from '@devvit/web/client';
 import { AddPinSheet } from './add-pin-sheet';
+import { AppToastHost } from './app-toast';
+import { PartnerPostSheetHost } from './partner-post-sheet';
 import { createDraftFromPin, createEmptyDraft, type AddPinDraft } from './add-pin-draft';
 import { MyPinSheet } from './my-pin-sheet';
 import { PartnerMap } from './partner-map';
 import { usePartnerPins } from '../hooks/usePartnerPins';
 import { draftPartnerPost } from '../lib/draft-partner-post';
+import { prefersNativeTouchPinch } from '../lib/leaflet/touch-capabilities';
 
 type PartnerAppProps = {
   variant?: 'splash' | 'game';
-  onExpand?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onExpand?: (event: MouseEvent<HTMLElement>) => void;
 };
 
 export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
@@ -30,7 +33,20 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [myPinSheetOpen, setMyPinSheetOpen] = useState(false);
   const [draft, setDraft] = useState<AddPinDraft | null>(null);
-  const [posting, setPosting] = useState(false);
+  const splashExpandRequestedRef = useRef(false);
+
+  const handleSplashExpandCapture = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (variant !== 'splash' || !onExpand || splashExpandRequestedRef.current) return;
+      if (!prefersNativeTouchPinch()) return;
+
+      splashExpandRequestedRef.current = true;
+      event.stopPropagation();
+      event.preventDefault();
+      onExpand(event);
+    },
+    [onExpand, variant]
+  );
 
   const startPlacement = useCallback(() => {
     clearError();
@@ -104,10 +120,7 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
     (pinId: string) => {
       const pin = pins.find((entry) => entry.id === pinId);
       if (!pin) return;
-      setPosting(true);
-      void draftPartnerPost(pin).finally(() => {
-        setPosting(false);
-      });
+      draftPartnerPost(pin);
     },
     [pins]
   );
@@ -126,7 +139,9 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
     variant === 'splash' ? 'partner-app partner-app--splash' : 'partner-app';
 
   return (
-    <div className={rootClassName}>
+    <div className={rootClassName} onClickCapture={handleSplashExpandCapture}>
+      <AppToastHost />
+      <PartnerPostSheetHost />
       <header className="partner-app__header">
         <div>
           <p className="partner-app__eyebrow">Find 10s Partner</p>
@@ -170,7 +185,7 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
               type="button"
               className="partner-app__secondary"
               onClick={openMyPin}
-              disabled={loading || saving || posting}
+              disabled={loading || saving}
             >
               My pin
             </button>
@@ -179,7 +194,7 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
             type="button"
             className="partner-app__cta"
             onClick={startPlacement}
-            disabled={loading || saving || posting}
+            disabled={loading || saving}
           >
             {myPin ? 'Update my pin' : 'Drop a pin'}
           </button>

@@ -63,12 +63,6 @@ function AddPinSheetForm({
           </button>
         </div>
 
-        {error ? (
-          <p className="partner-pin-sheet__error" role="alert">
-            {error}
-          </p>
-        ) : null}
-
         {!signedIn ? (
           <p className="partner-pin-sheet__notice">
             Sign in to Reddit to post your pin on the map.
@@ -209,6 +203,12 @@ function AddPinSheetForm({
               .
             </span>
           </label>
+        ) : null}
+
+        {error ? (
+          <p className="partner-pin-sheet__error" role="alert">
+            {error}
+          </p>
         ) : null}
 
         <div className="partner-pin-sheet__actions">

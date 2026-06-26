@@ -35,7 +35,8 @@ import { createThrottledTileLayer } from './leaflet/throttled-tile-layer';
 import './leaflet/register-smooth-wheel-zoom';
 import { registerMobileMapTouch, mobileMapInteractionOptions } from './leaflet/register-mobile-map-touch';
 import { registerTrackpadPinchZoom } from './leaflet/register-trackpad-pinch-zoom';
-import { prefersSmoothWheelZoom } from './leaflet/touch-capabilities';
+import { registerPinchPanHandoff } from './leaflet/register-pinch-pan-handoff';
+import { prefersNativeTouchPinch, prefersSmoothWheelZoom } from './leaflet/touch-capabilities';
 
 export type { MapLoadStatus } from './map-load-status';
 
@@ -147,6 +148,7 @@ export function mountVanillaPartnerMap(
   publishStatus('loading');
   logMap('Mounting map');
 
+  const useNativeTouchPinch = prefersNativeTouchPinch();
   const useSmoothWheelZoom = prefersSmoothWheelZoom();
   const touchOptions = mobileMapInteractionOptions();
 
@@ -170,6 +172,7 @@ export function mountVanillaPartnerMap(
   }).setView(WORLD_VIEW_CENTER, WORLD_VIEW_ZOOM);
 
   const removeMobileMapTouch = registerMobileMapTouch(map);
+  const removePinchPanHandoff = useNativeTouchPinch ? registerPinchPanHandoff(map) : () => {};
   const removeTrackpadPinchZoom = useSmoothWheelZoom ? registerTrackpadPinchZoom(map) : () => {};
 
   const publishZoom = () => {
@@ -276,9 +279,10 @@ export function mountVanillaPartnerMap(
   };
   map.on('click', onMapClick);
 
-  const onPopupClick = (e: MouseEvent) => {
+  const handlePopupAction = (e: Event) => {
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
+    if (!target.closest('.partner-pin-popup')) return;
 
     const link = target.closest('a.partner-pin-popup__link');
     if (link instanceof HTMLAnchorElement && link.href) {
@@ -304,7 +308,11 @@ export function mountVanillaPartnerMap(
     options.onDeletePin(pinId);
     map.closePopup();
   };
-  map.getContainer().addEventListener('click', onPopupClick);
+
+  // Leaflet calls disableClickPropagation on the popup container, so bubble-phase
+  // listeners on the map never see taps on popup buttons (especially on mobile).
+  const mapContainer = map.getContainer();
+  mapContainer.addEventListener('click', handlePopupAction, true);
 
   const queueRemeasure = () => {
     requestAnimationFrame(() => {
@@ -378,11 +386,12 @@ export function mountVanillaPartnerMap(
     resizeObserver?.disconnect();
     removeClusterZoomHandlers();
     removeMobileMapTouch();
+    removePinchPanHandoff();
     removeTrackpadPinchZoom();
     map.off('click', onMapClick);
     map.off('zoom', publishZoom);
     map.off('zoomend', publishZoom);
-    map.getContainer().removeEventListener('click', onPopupClick);
+    map.getContainer().removeEventListener('click', handlePopupAction, true);
     cluster.clearLayers();
     map.remove();
     container.replaceChildren();

@@ -2,18 +2,9 @@ import L from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 
 import { prefersNativeTouchPinch } from './touch-capabilities';
-import { isMapTouchSurface, MAP_PAN_COMMIT_PX } from './map-touch-surface';
-
-type TouchSession = {
-  identifier: number;
-  startX: number;
-  startY: number;
-  panCommitted: boolean;
-};
 
 /**
- * Isolate map gestures from the Reddit feed: small movement = tap, larger = pan/pinch.
- * Avoids preventDefault on every touchmove so pin taps stay reliable.
+ * Keep pinch/pan on the map instead of the Reddit iframe or browser scroll chrome.
  */
 export function registerMobileMapTouch(map: LeafletMap): () => void {
   if (typeof document === 'undefined') return () => {};
@@ -26,95 +17,77 @@ export function registerMobileMapTouch(map: LeafletMap): () => void {
     return () => {};
   }
 
-  let session: TouchSession | null = null;
-  const commitPxSq = MAP_PAN_COMMIT_PX * MAP_PAN_COMMIT_PX;
+  let singleTouchActive = false;
+  let multiTouchActive = false;
 
-  const resetSession = () => {
-    session = null;
+  const isMapSurfaceTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof Element)) return false;
+    if (!container.contains(target)) return false;
+    return target.closest('.partner-map-search, .leaflet-popup, .leaflet-control') === null;
   };
 
   const onTouchStart = (e: TouchEvent) => {
-    if (!isMapTouchSurface(container, e.target)) {
-      resetSession();
+    if (!isMapSurfaceTarget(e.target)) {
+      singleTouchActive = false;
+      multiTouchActive = false;
+      return;
+    }
+
+    if (e.touches.length === 1) {
+      singleTouchActive = true;
+      multiTouchActive = false;
       return;
     }
 
     if (e.touches.length >= 2) {
-      resetSession();
-      if (e.cancelable) e.preventDefault();
-      return;
+      singleTouchActive = false;
+      multiTouchActive = true;
     }
-
-    if (e.touches.length !== 1) return;
-
-    const touch = e.touches[0];
-    if (!touch) return;
-
-    session = {
-      identifier: touch.identifier,
-      startX: touch.clientX,
-      startY: touch.clientY,
-      panCommitted: false,
-    };
   };
 
   const onTouchMove = (e: TouchEvent) => {
+    if (!isMapSurfaceTarget(e.target) && !singleTouchActive && !multiTouchActive) return;
+
     if (e.touches.length >= 2) {
-      resetSession();
-      if (e.cancelable) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      multiTouchActive = true;
+      singleTouchActive = false;
+      e.preventDefault();
       return;
     }
 
-    if (!session || e.touches.length !== 1) return;
-
-    const touch = e.touches[0];
-    if (!touch || touch.identifier !== session.identifier) return;
-
-    if (!session.panCommitted) {
-      const dx = touch.clientX - session.startX;
-      const dy = touch.clientY - session.startY;
-      if (dx * dx + dy * dy >= commitPxSq) {
-        session.panCommitted = true;
-      }
-    }
-
-    if (session.panCommitted && e.cancelable) {
+    if (singleTouchActive && e.touches.length === 1) {
       e.preventDefault();
-      e.stopPropagation();
     }
   };
 
   const onTouchEnd = (e: TouchEvent) => {
     if (e.touches.length === 0) {
-      resetSession();
+      singleTouchActive = false;
+      multiTouchActive = false;
       return;
     }
 
-    if (session && e.touches.length === 1) {
-      const touch = e.touches[0];
-      if (!touch || touch.identifier !== session.identifier) {
-        resetSession();
-      }
+    if (e.touches.length === 1) {
+      multiTouchActive = false;
+      singleTouchActive = isMapSurfaceTarget(e.target);
     }
   };
 
   const onTouchCancel = () => {
-    resetSession();
+    singleTouchActive = false;
+    multiTouchActive = false;
   };
 
-  container.addEventListener('touchstart', onTouchStart, { passive: false, capture: true });
-  container.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
-  container.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
-  container.addEventListener('touchcancel', onTouchCancel, { passive: true, capture: true });
+  container.addEventListener('touchstart', onTouchStart, { passive: true });
+  container.addEventListener('touchmove', onTouchMove, { passive: false });
+  container.addEventListener('touchend', onTouchEnd, { passive: true });
+  container.addEventListener('touchcancel', onTouchCancel, { passive: true });
 
   return () => {
-    container.removeEventListener('touchstart', onTouchStart, true);
-    container.removeEventListener('touchmove', onTouchMove, true);
-    container.removeEventListener('touchend', onTouchEnd, true);
-    container.removeEventListener('touchcancel', onTouchCancel, true);
+    container.removeEventListener('touchstart', onTouchStart);
+    container.removeEventListener('touchmove', onTouchMove);
+    container.removeEventListener('touchend', onTouchEnd);
+    container.removeEventListener('touchcancel', onTouchCancel);
   };
 }
 
@@ -133,10 +106,10 @@ export function mobileMapInteractionOptions(): Pick<
   }
 
   return {
-    tapTolerance: 10,
+    tapTolerance: 7,
     inertia: true,
-    inertiaDeceleration: 3000,
-    inertiaMaxSpeed: 2000,
+    inertiaDeceleration: 2800,
+    inertiaMaxSpeed: 2200,
     zoomSnap: 0,
   };
 }

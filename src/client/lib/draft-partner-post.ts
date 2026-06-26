@@ -1,6 +1,22 @@
-import { showForm, showToast } from '@devvit/web/client';
 import type { CreatePartnerPostResponse, PartnerPin } from '../../shared/api';
-import { buildPartnerPostBody, buildPartnerPostTitle } from '../../shared/api';
+import { pushAppToast } from './app-toast-bus';
+import { openPartnerPostSheet } from './partner-post-sheet-bus';
+
+const POST_LOG_PREFIX = '[find10spartner:post]';
+
+function logPost(
+  message: string,
+  detail?: Record<string, unknown>,
+  level: 'info' | 'error' = 'info'
+): void {
+  if (!detail) {
+    if (level === 'error') console.error(`${POST_LOG_PREFIX} ${message}`);
+    else console.log(`${POST_LOG_PREFIX} ${message}`);
+    return;
+  }
+  if (level === 'error') console.error(`${POST_LOG_PREFIX} ${message}`, detail);
+  else console.log(`${POST_LOG_PREFIX} ${message}`, detail);
+}
 
 function isCreatePartnerPostResponse(value: unknown): value is CreatePartnerPostResponse {
   if (typeof value !== 'object' || value === null) return false;
@@ -16,42 +32,57 @@ function errorMessageFromPayload(value: unknown): string | null {
   return value.message;
 }
 
-/** Review and submit a hitting-partner thread to the subreddit. */
-export async function draftPartnerPost(pin: PartnerPin): Promise<void> {
-  const formResult = await showForm({
-    title: 'Post to subreddit',
-    description: 'Edit the title and body, then publish your hitting partner post.',
-    acceptLabel: 'Post',
-    cancelLabel: 'Cancel',
-    fields: [
-      {
-        type: 'string',
-        name: 'title',
-        label: 'Title',
-        defaultValue: buildPartnerPostTitle(pin),
-        required: true,
-      },
-      {
-        type: 'paragraph',
-        name: 'body',
-        label: 'Body (markdown)',
-        defaultValue: buildPartnerPostBody(pin),
-      },
-    ],
+function toastPostSuccess(postId: string): void {
+  pushAppToast({
+    variant: 'success',
+    text: 'Post published to the subreddit.',
   });
+  logPost('Toast: success', { postId });
+}
 
-  if (formResult.action !== 'SUBMITTED') {
-    return;
+function toastPostError(reason: string): void {
+  const text = `Couldn't post to subreddit: ${friendlyPostError(reason)}`;
+  pushAppToast({
+    variant: 'error',
+    text,
+  });
+}
+
+function friendlyPostError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('not approved') && lower.includes('run as user')) {
+    return (
+      'This app version is not approved to post as you in the Reddit mobile app yet. ' +
+      'During playtest, only the app developer can post from mobile. Try reddit.com in a browser, ' +
+      'or publish the app for review.'
+    );
   }
-
-  const title =
-    typeof formResult.values.title === 'string' ? formResult.values.title.trim() : '';
-  if (!title) {
-    showToast({ text: 'Title is required', appearance: 'neutral' });
-    return;
+  if (lower.includes('grpc') || lower.includes('status 2')) {
+    return (
+      'Reddit blocked posting as your account. Tap Post again and approve the permission prompt. ' +
+      'If it keeps failing on mobile, try reddit.com in a browser.'
+    );
   }
+  return message;
+}
 
-  const body = typeof formResult.values.body === 'string' ? formResult.values.body : '';
+export type SubmitPartnerPostResult =
+  | { ok: true; postId: string }
+  | { ok: false; reason: string };
+
+/** Open the in-app review form for a hitting-partner thread. */
+export function draftPartnerPost(pin: PartnerPin): void {
+  logPost('Opening post form', { pinId: pin.id, username: pin.username });
+  openPartnerPostSheet(pin);
+}
+
+/** Publish a reviewed hitting-partner thread to the subreddit. */
+export async function submitPartnerPost(
+  pin: PartnerPin,
+  title: string,
+  body: string
+): Promise<SubmitPartnerPostResult> {
+  logPost('Submitting post', { pinId: pin.id, titleLength: title.length, bodyLength: body.length });
 
   try {
     const res = await fetch('/api/posts/from-pin', {
@@ -64,7 +95,9 @@ export async function draftPartnerPost(pin: PartnerPin): Promise<void> {
       }),
     });
 
-    const data: unknown = await res.json();
+    const data: unknown = await res.json().catch(() => {
+      throw new Error(`Invalid server response (HTTP ${res.status})`);
+    });
     if (!res.ok) {
       throw new Error(errorMessageFromPayload(data) ?? `HTTP ${res.status}`);
     }
@@ -75,12 +108,24 @@ export async function draftPartnerPost(pin: PartnerPin): Promise<void> {
     }
 
     if (!isCreatePartnerPostResponse(data)) {
-      throw new Error('Unexpected response');
+      throw new Error('Unexpected response from server');
     }
 
-    showToast({ text: 'Post created', appearance: 'success' });
+    logPost('Post created', { pinId: pin.id, postId: data.postId });
+    toastPostSuccess(data.postId);
+    return { ok: true, postId: data.postId };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create post';
-    showToast({ text: message, appearance: 'neutral' });
+    logPost(
+      'Post failed',
+      {
+        pinId: pin.id,
+        reason: message,
+        ...(err instanceof Error && err.cause ? { cause: String(err.cause) } : {}),
+      },
+      'error'
+    );
+    toastPostError(message);
+    return { ok: false, reason: friendlyPostError(message) };
   }
 }

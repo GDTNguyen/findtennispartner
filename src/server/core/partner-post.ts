@@ -8,6 +8,20 @@ export function redditTitle(line: string): string {
   return `${title.slice(0, REDDIT_TITLE_MAX - 1)}…`;
 }
 
+export function friendlyServerPostError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('not approved') && lower.includes('run as user')) {
+    return (
+      'App version not approved to post as user on mobile. ' +
+      'During playtest only the app developer can post from the Reddit app; use reddit.com or publish for review.'
+    );
+  }
+  if (lower.includes('usergeneratedcontent')) {
+    return 'Post content could not be submitted as user-generated content.';
+  }
+  return message;
+}
+
 export async function submitPartnerPinPost(options: {
   subredditName: string;
   title: string;

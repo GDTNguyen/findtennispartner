@@ -28,7 +28,6 @@ body,
 .partner-app--splash {
   min-height: auto;
   height: auto;
-  overscroll-behavior: contain;
 }
 
 .partner-app--splash .partner-app__map-wrap {
@@ -41,6 +40,18 @@ body,
 .partner-app--splash .partner-map-root {
   min-height: 100%;
   height: 100%;
+}
+
+/* Splash on touch devices: map is preview-only; taps pass through to expand full view. */
+@media (pointer: coarse) {
+  .partner-app--splash .partner-map-shell,
+  .partner-app--splash .partner-map-shell * {
+    pointer-events: none;
+  }
+
+  .partner-app--splash .partner-app__map-wrap {
+    cursor: pointer;
+  }
 }
 
 .partner-app__expand-icon {
@@ -323,8 +334,6 @@ body,
   min-height: 24rem;
   container-type: inline-size;
   container-name: partner-map;
-  touch-action: none;
-  overscroll-behavior: none;
 }
 
 .partner-map-root {
@@ -340,13 +349,6 @@ body,
 
 .partner-map-root.leaflet-container {
   font-family: inherit;
-  touch-action: none;
-}
-
-.partner-map-root .leaflet-pane,
-.partner-map-root .leaflet-map-pane,
-.partner-map-root .leaflet-tile-pane {
-  touch-action: none;
 }
 
 .partner-map-root .leaflet-tile-container {
@@ -713,6 +715,7 @@ body,
   box-shadow:
     0 10px 28px rgba(15, 23, 42, 0.16),
     0 2px 8px rgba(15, 23, 42, 0.08);
+  touch-action: manipulation;
 }
 
 .partner-pin-popup .leaflet-popup-tip {
@@ -920,7 +923,8 @@ body,
 }
 
 .partner-pin-sheet__error {
-  margin-top: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
   border-radius: 0.75rem;
   border: 1px solid #fecaca;
   background: #fef2f2;
@@ -947,6 +951,35 @@ body,
   border-radius: 0.65rem;
   padding: 0.55rem 0.7rem;
   font: inherit;
+}
+
+.partner-post-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: grid;
+  place-items: end center;
+}
+
+.partner-post-sheet__panel {
+  max-height: min(92vh, 40rem);
+  overflow-y: auto;
+}
+
+.partner-post-sheet__textarea {
+  width: 100%;
+  min-height: 12rem;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.partner-post-sheet__textarea:focus {
+  outline: 2px solid #fdba74;
+  outline-offset: 1px;
 }
 
 .partner-pin-sheet__preview {
@@ -1061,6 +1094,10 @@ body,
   margin-top: 1rem;
 }
 
+.partner-pin-sheet__error + .partner-pin-sheet__actions {
+  margin-top: 0;
+}
+
 .partner-pin-sheet__secondary,
 .partner-pin-sheet__primary {
   border-radius: 9999px;
@@ -1105,4 +1142,33 @@ body,
 
 .partner-pin-sheet__delete-confirm {
   margin-top: 1rem;
+}
+
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  z-index: 1100;
+  max-width: min(22rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.18),
+    0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.app-toast--success {
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #047857;
+}
+
+.app-toast--error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
 }

@@ -14,15 +14,11 @@ type MyPinSheetProps = {
 };
 
 export function MyPinSheet({ open, pin, deleting, error, onClose, onEdit, onDelete }: MyPinSheetProps) {
-  const [posting, setPosting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handlePost = useCallback(() => {
     if (!pin) return;
-    setPosting(true);
-    void draftPartnerPost(pin).finally(() => {
-      setPosting(false);
-    });
+    draftPartnerPost(pin);
   }, [pin]);
 
   const handleClose = useCallback(() => {
@@ -112,10 +108,10 @@ export function MyPinSheet({ open, pin, deleting, error, onClose, onEdit, onDele
             <button
               type="button"
               className="partner-pin-sheet__post"
-              disabled={posting || deleting}
+              disabled={deleting}
               onClick={handlePost}
             >
-              {posting ? 'Opening…' : 'Post to subreddit'}
+              Post to subreddit
             </button>
             <button
               type="button"

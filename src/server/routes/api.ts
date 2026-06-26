@@ -9,7 +9,7 @@ import type {
   InitResponse,
   PartnerPin,
 } from '../../shared/api';
-import { submitPartnerPinPost } from '../core/partner-post';
+import { friendlyServerPostError, submitPartnerPinPost } from '../core/partner-post';
 import { searchPlaces } from './geocode';
 import { fetchOsmBasemapTile } from './map-tiles';
 import {
@@ -386,7 +386,8 @@ api.post('/posts/from-pin', async (c) => {
     });
   } catch (error) {
     console.error('[api/posts/from-pin]', error);
-    const message = error instanceof Error ? error.message : 'Failed to create post';
+    const raw = error instanceof Error ? error.message : 'Failed to create post';
+    const message = friendlyServerPostError(raw);
     return c.json<ErrorResponse>({ status: 'error', message }, 502);
   }
 });
