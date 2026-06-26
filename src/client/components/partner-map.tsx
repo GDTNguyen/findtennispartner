@@ -7,6 +7,7 @@ import {
   mapLoadStatusTone,
   type MapLoadStatus,
 } from '../lib/map-load-status';
+import { isExpandedPresentation } from '../lib/devvit-presentation';
 import { mountVanillaPartnerMap, type VanillaPartnerMapHandle } from '../lib/vanilla-partner-map';
 import { LocationSearch } from './location-search';
 
@@ -14,6 +15,7 @@ type PartnerMapProps = {
   pins: PartnerPin[];
   username: string | null;
   placementMode: boolean;
+  previewMode?: boolean;
   onMapClick: (lat: number, lng: number) => void;
   onDeletePin: (pinId: string) => void;
   onDraftPost: (pinId: string) => void;
@@ -23,6 +25,7 @@ export function PartnerMap({
   pins,
   username,
   placementMode,
+  previewMode = false,
   onMapClick,
   onDeletePin,
   onDraftPost,
@@ -50,7 +53,10 @@ export function PartnerMap({
     const el = containerRef.current;
     if (!el || mapHandleRef.current) return;
 
+    const interactive = isExpandedPresentation() && !previewMode;
+
     mapHandleRef.current = mountVanillaPartnerMap(el, {
+      previewMode: !interactive,
       onMapClick: (lat, lng) => onMapClickRef.current(lat, lng),
       onDeletePin: (pinId) => onDeletePinRef.current(pinId),
       onDraftPost: (pinId) => onDraftPostRef.current(pinId),
@@ -81,8 +87,8 @@ export function PartnerMap({
   const mapLoadTone = mapLoadStatusTone(mapLoadStatus);
 
   return (
-    <div className="partner-map-shell">
-      <LocationSearch onSelect={handleLocationSelect} />
+    <div className={`partner-map-shell${previewMode ? ' partner-map-shell--preview' : ''}`}>
+      {previewMode ? null : <LocationSearch onSelect={handleLocationSelect} />}
       <div ref={containerRef} className="partner-map-root" />
       <div
         className={`partner-map-load-status partner-map-load-status--${mapLoadTone}`}

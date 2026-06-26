@@ -114,6 +114,7 @@ function remeasureLeafletMap(map: L.Map) {
 export function mountVanillaPartnerMap(
   container: HTMLElement,
   options: {
+    previewMode?: boolean;
     onMapClick: (lat: number, lng: number) => void;
     onDeletePin: (pinId: string) => void;
     onDraftPost: (pinId: string) => void;
@@ -122,6 +123,8 @@ export function mountVanillaPartnerMap(
   }
 ): VanillaPartnerMapHandle {
   container.replaceChildren();
+
+  const previewMode = options.previewMode ?? false;
 
   let tilesLoaded = 0;
   let tilesFailed = 0;
@@ -154,7 +157,7 @@ export function mountVanillaPartnerMap(
 
   const map = L.map(container, {
     scrollWheelZoom: false,
-    smoothWheelZoom: useSmoothWheelZoom ? 'center' : false,
+    smoothWheelZoom: previewMode ? false : useSmoothWheelZoom ? 'center' : false,
     smoothSensitivity: 1,
     worldCopyJump: true,
     zoomAnimation: true,
@@ -162,18 +165,32 @@ export function mountVanillaPartnerMap(
     zoomSnap: touchOptions.zoomSnap,
     zoomDelta: 0.5,
     bounceAtZoomLimits: false,
-    dragging: true,
-    touchZoom: 'center',
-    doubleClickZoom: 'center',
-    inertia: touchOptions.inertia,
+    dragging: !previewMode,
+    touchZoom: previewMode ? false : 'center',
+    doubleClickZoom: previewMode ? false : 'center',
+    boxZoom: !previewMode,
+    keyboard: !previewMode,
+    inertia: previewMode ? false : touchOptions.inertia,
     inertiaDeceleration: touchOptions.inertiaDeceleration,
     inertiaMaxSpeed: touchOptions.inertiaMaxSpeed,
     tapTolerance: touchOptions.tapTolerance,
   }).setView(WORLD_VIEW_CENTER, WORLD_VIEW_ZOOM);
 
-  const removeMobileMapTouch = registerMobileMapTouch(map);
-  const removePinchPanHandoff = useNativeTouchPinch ? registerPinchPanHandoff(map) : () => {};
-  const removeTrackpadPinchZoom = useSmoothWheelZoom ? registerTrackpadPinchZoom(map) : () => {};
+  const removeMobileMapTouch = previewMode ? () => {} : registerMobileMapTouch(map);
+  const removePinchPanHandoff =
+    previewMode || !useNativeTouchPinch ? () => {} : registerPinchPanHandoff(map);
+  const removeTrackpadPinchZoom =
+    previewMode || !useSmoothWheelZoom ? () => {} : registerTrackpadPinchZoom(map);
+
+  if (previewMode) {
+    map.dragging.disable();
+    map.touchZoom.disable();
+    map.doubleClickZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
+    map.scrollWheelZoom.disable();
+    container.classList.add('partner-map-root--preview');
+  }
 
   const publishZoom = () => {
     options.onZoomChange?.(map.getZoom());
@@ -395,7 +412,7 @@ export function mountVanillaPartnerMap(
     cluster.clearLayers();
     map.remove();
     container.replaceChildren();
-    container.classList.remove('partner-map-root--placing');
+    container.classList.remove('partner-map-root--placing', 'partner-map-root--preview');
   };
 
   return {

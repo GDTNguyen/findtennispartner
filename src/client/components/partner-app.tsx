@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useState } from 'react';
 import { navigateTo } from '@devvit/web/client';
 import { AddPinSheet } from './add-pin-sheet';
 import { AppToastHost } from './app-toast';
@@ -6,16 +6,13 @@ import { PartnerPostSheetHost } from './partner-post-sheet';
 import { createDraftFromPin, createEmptyDraft, type AddPinDraft } from './add-pin-draft';
 import { MyPinSheet } from './my-pin-sheet';
 import { PartnerMap } from './partner-map';
+import { useDevvitPresentation } from '../hooks/useDevvitPresentation';
 import { usePartnerPins } from '../hooks/usePartnerPins';
 import { draftPartnerPost } from '../lib/draft-partner-post';
-import { prefersNativeTouchPinch } from '../lib/leaflet/touch-capabilities';
 
-type PartnerAppProps = {
-  variant?: 'splash' | 'game';
-  onExpand?: (event: MouseEvent<HTMLElement>) => void;
-};
+export function PartnerApp() {
+  useDevvitPresentation();
 
-export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
   const {
     pins,
     username,
@@ -33,20 +30,6 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [myPinSheetOpen, setMyPinSheetOpen] = useState(false);
   const [draft, setDraft] = useState<AddPinDraft | null>(null);
-  const splashExpandRequestedRef = useRef(false);
-
-  const handleSplashExpandCapture = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (variant !== 'splash' || !onExpand || splashExpandRequestedRef.current) return;
-      if (!prefersNativeTouchPinch()) return;
-
-      splashExpandRequestedRef.current = true;
-      event.stopPropagation();
-      event.preventDefault();
-      onExpand(event);
-    },
-    [onExpand, variant]
-  );
 
   const startPlacement = useCallback(() => {
     clearError();
@@ -135,51 +118,25 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
     startPlacement();
   }, [startPlacement]);
 
-  const rootClassName =
-    variant === 'splash' ? 'partner-app partner-app--splash' : 'partner-app';
+  const rootClassName = 'partner-app partner-app--expanded';
 
   return (
-    <div className={rootClassName} onClickCapture={handleSplashExpandCapture}>
+    <div className={rootClassName}>
       <AppToastHost />
       <PartnerPostSheetHost />
       <header className="partner-app__header">
-        <div>
+        <div className="partner-app__header-copy">
           <p className="partner-app__eyebrow">Find 10s Partner</p>
           <h1 className="partner-app__title">Hitting partner map</h1>
           <p className="partner-app__subtitle">
-            Drop a pin where you play. Format:{' '}
-            <strong>[UTR level, City/Court]</strong> plus your socials.
+            Drop a pin where you play.
+            <span className="partner-app__subtitle-detail">
+              {' '}
+              Format: <strong>[UTR level, City/Court]</strong> plus your socials.
+            </span>
           </p>
         </div>
         <div className="partner-app__header-actions">
-          {variant === 'splash' && onExpand ? (
-            <button
-              type="button"
-              className="partner-app__expand-icon"
-              onClick={onExpand}
-              aria-label="Open full view"
-            >
-              <svg
-                className="partner-app__expand-icon-svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M8 3H3v5" />
-                <path d="M16 3h5v5" />
-                <path d="M3 16v5h5" />
-                <path d="M21 16v5h-5" />
-                <path d="M3 8 8 3" />
-                <path d="M16 3l5 5" />
-                <path d="M3 16l5 5" />
-                <path d="M21 16l-5 5" />
-              </svg>
-            </button>
-          ) : null}
           {myPin ? (
             <button
               type="button"
@@ -187,7 +144,12 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
               onClick={openMyPin}
               disabled={loading || saving}
             >
-              My pin
+              <span className="partner-app__secondary-label partner-app__secondary-label--full">
+                My pin
+              </span>
+              <span className="partner-app__secondary-label partner-app__secondary-label--short">
+                Pin
+              </span>
             </button>
           ) : null}
           <button
@@ -196,7 +158,12 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
             onClick={startPlacement}
             disabled={loading || saving}
           >
-            {myPin ? 'Update my pin' : 'Drop a pin'}
+            <span className="partner-app__cta-label partner-app__cta-label--full">
+              {myPin ? 'Update my pin' : 'Drop a pin'}
+            </span>
+            <span className="partner-app__cta-label partner-app__cta-label--short">
+              {myPin ? 'Update pin' : 'Drop pin'}
+            </span>
           </button>
         </div>
       </header>
