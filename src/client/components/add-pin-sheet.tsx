@@ -180,34 +180,36 @@ function AddPinSheetForm({
           </label>
         </fieldset>
 
-        <label className="partner-pin-sheet__consent">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          <span>
-            I understand my Reddit username, chosen map location, level and any
-            links I add will be shown publicly and stored by AllCourtPro so my
-            pin persists across posts. I can remove my pin anytime. See the{' '}
-            <button
-              type="button"
-              className="partner-pin-sheet__inline-link"
-              onClick={() => navigateTo('https://www.allcourt.pro/terms')}
-            >
-              Terms
-            </button>{' '}
-            and{' '}
-            <button
-              type="button"
-              className="partner-pin-sheet__inline-link"
-              onClick={() => navigateTo('https://www.allcourt.pro/privacy')}
-            >
-              Privacy policy
-            </button>
-            .
-          </span>
-        </label>
+        {!isUpdate ? (
+          <label className="partner-pin-sheet__consent">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+            />
+            <span>
+              I understand my Reddit username, chosen map location, level and any
+              links I add will be shown publicly and stored by AllCourtPro so my
+              pin persists across posts. I can remove my pin anytime. See the{' '}
+              <button
+                type="button"
+                className="partner-pin-sheet__inline-link"
+                onClick={() => navigateTo('https://www.allcourt.pro/terms')}
+              >
+                Terms
+              </button>{' '}
+              and{' '}
+              <button
+                type="button"
+                className="partner-pin-sheet__inline-link"
+                onClick={() => navigateTo('https://www.allcourt.pro/privacy')}
+              >
+                Privacy policy
+              </button>
+              .
+            </span>
+          </label>
+        ) : null}
 
         <div className="partner-pin-sheet__actions">
           <button type="button" className="partner-pin-sheet__secondary" onClick={onClose}>
@@ -216,7 +218,7 @@ function AddPinSheetForm({
           <button
             type="button"
             className="partner-pin-sheet__primary"
-            disabled={!signedIn || !consent || saving}
+            disabled={!signedIn || (!isUpdate && !consent) || saving}
             onClick={onSubmit}
           >
             {saving ? 'Posting…' : isUpdate ? 'Update pin' : 'Post pin'}

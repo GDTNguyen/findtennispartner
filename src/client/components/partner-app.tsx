@@ -137,6 +137,34 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
           </p>
         </div>
         <div className="partner-app__header-actions">
+          {variant === 'splash' && onExpand ? (
+            <button
+              type="button"
+              className="partner-app__expand-icon"
+              onClick={onExpand}
+              aria-label="Open full view"
+            >
+              <svg
+                className="partner-app__expand-icon-svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M8 3H3v5" />
+                <path d="M16 3h5v5" />
+                <path d="M3 16v5h5" />
+                <path d="M21 16v5h-5" />
+                <path d="M3 8 8 3" />
+                <path d="M16 3l5 5" />
+                <path d="M3 16l5 5" />
+                <path d="M21 16l-5 5" />
+              </svg>
+            </button>
+          ) : null}
           {myPin ? (
             <button
               type="button"
@@ -175,14 +203,6 @@ export function PartnerApp({ variant = 'game', onExpand }: PartnerAppProps) {
         />
         {loading ? <div className="partner-app__map-loading">Loading pins…</div> : null}
       </div>
-
-      {variant === 'splash' && onExpand ? (
-        <div className="partner-app__expand-wrap">
-          <button type="button" className="partner-app__expand" onClick={onExpand}>
-            Open full view
-          </button>
-        </div>
-      ) : null}
 
       <MyPinSheet
         key={myPin?.id ?? 'no-pin'}

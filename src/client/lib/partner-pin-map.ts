@@ -17,7 +17,7 @@ function socialLinkRows(links: PartnerPinSocialLinks): string {
     if (!href) return;
     const safeHref = escapeHtml(href);
     rows.push(
-      `<li><a href="${safeHref}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a></li>`
+      `<a class="partner-pin-popup__chip partner-pin-popup__link" href="${safeHref}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
     );
   };
 
@@ -25,10 +25,10 @@ function socialLinkRows(links: PartnerPinSocialLinks): string {
   add('X', links.x);
   add('Facebook', links.facebook);
   add('AllCourtPro', links.allcourt);
-  add('Profile link', links.other);
+  add('Link', links.other);
 
   if (rows.length === 0) return '';
-  return `<ul class="partner-pin-popup__links">${rows.join('')}</ul>`;
+  return `<div class="partner-pin-popup__links">${rows.join('')}</div>`;
 }
 
 export function buildPartnerPinPopupHtml(pin: PartnerPin, canDelete: boolean): string {
@@ -37,15 +37,17 @@ export function buildPartnerPinPopupHtml(pin: PartnerPin, canDelete: boolean): s
     ? `<button type="button" class="partner-pin-popup__post" data-pin-id="${escapeHtml(pin.id)}">Post to subreddit</button>`
     : '';
   const deleteButton = canDelete
-    ? `<button type="button" class="partner-pin-popup__delete" data-pin-id="${escapeHtml(pin.id)}">Remove my pin</button>`
+    ? `<button type="button" class="partner-pin-popup__delete" data-pin-id="${escapeHtml(pin.id)}">Remove pin</button>`
     : '';
 
   return `<div class="partner-pin-popup__inner">
-<p class="partner-pin-popup__headline">Looking for a hitting partner?</p>
+<div class="partner-pin-popup__header">
+<span class="partner-pin-popup__badge">Looking for partner</span>
+<span class="partner-pin-popup__user">u/${escapeHtml(pin.username)}</span>
+</div>
 <p class="partner-pin-popup__label">${escapeHtml(label)}</p>
-<p class="partner-pin-popup__user">u/${escapeHtml(pin.username)}</p>
 ${socialLinkRows(pin.socialLinks)}
-<div class="partner-pin-popup__actions">${postButton}${deleteButton}</div>
+${postButton || deleteButton ? `<div class="partner-pin-popup__actions">${postButton}${deleteButton}</div>` : ''}
 </div>`;
 }
 

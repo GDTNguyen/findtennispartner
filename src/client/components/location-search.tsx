@@ -36,7 +36,7 @@ export function LocationSearch({ onSelect }: LocationSearchProps) {
             id="partner-map-search-input"
             type="search"
             className="partner-map-search__input"
-            placeholder="City, court, or address"
+            placeholder="Search…"
             value={query}
             autoComplete="off"
             onChange={(event) => {
@@ -55,7 +55,20 @@ export function LocationSearch({ onSelect }: LocationSearchProps) {
             disabled={loading || query.trim().length < 2}
             aria-label="Search location"
           >
-            {loading ? '…' : 'Go'}
+            <span className="partner-map-search__submit-label">{loading ? '…' : 'Go'}</span>
+            <svg
+              className="partner-map-search__submit-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
           </button>
         </div>
       </form>

@@ -2,6 +2,7 @@ import L from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 
 import './register-smooth-wheel-zoom';
+import { prefersNativeTouchPinch } from './touch-capabilities';
 
 const PINCH_WHEEL_SENSITIVITY_MULTIPLIER = 3.5;
 const GESTURE_ZOOM_SENSITIVITY = 2.5;
@@ -154,14 +155,20 @@ export function registerTrackpadPinchZoom(map: LeafletMap): () => void {
     if (handler?._isWheeling) handler._onWheelEnd();
   };
 
-  container.addEventListener('gesturestart', onGestureStart, { passive: false });
-  container.addEventListener('gesturechange', onGestureChange, { passive: false });
-  container.addEventListener('gestureend', onGestureEnd, { passive: false });
+  if (!prefersNativeTouchPinch()) {
+    container.addEventListener('gesturestart', onGestureStart, { passive: false });
+    container.addEventListener('gesturechange', onGestureChange, { passive: false });
+    container.addEventListener('gestureend', onGestureEnd, { passive: false });
+  }
+
+  const useWebKitGesturePinch = !prefersNativeTouchPinch();
 
   return () => {
     container.removeEventListener('wheel', onWheelCapture, true);
-    container.removeEventListener('gesturestart', onGestureStart);
-    container.removeEventListener('gesturechange', onGestureChange);
-    container.removeEventListener('gestureend', onGestureEnd);
+    if (useWebKitGesturePinch) {
+      container.removeEventListener('gesturestart', onGestureStart);
+      container.removeEventListener('gesturechange', onGestureChange);
+      container.removeEventListener('gestureend', onGestureEnd);
+    }
   };
 }

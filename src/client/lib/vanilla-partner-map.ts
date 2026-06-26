@@ -1,10 +1,10 @@
+import { navigateTo } from '@devvit/web/client';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import type { PartnerPin } from '../../shared/api';
 import {
-  CLUSTER_RADIUS_PX,
   DISABLE_CLUSTERING_AT_ZOOM,
   LOCATION_SEARCH_ZOOM,
   STANDARD_BASEMAP_ATTRIBUTION,
@@ -17,6 +17,12 @@ import {
   createClusterBubbleIcon,
   createPartnerPinIcon,
 } from './partner-pin-map';
+import {
+  attachPartnerPinClusterZoomHandlers,
+  applyCoincidentPartnerPinSpread,
+  clusterRadiusForZoom,
+  stampPartnerMarkerOrigin,
+} from './partner-pin-clustering';
 
 import {
   INITIAL_MAP_LOAD_STATUS,
@@ -24,10 +30,13 @@ import {
   type MapTileError,
 } from './map-load-status';
 import { reportMapLog } from './report-map-log';
+import { panToPinView } from './map-pin-view';
 import { createThrottledTileLayer } from './leaflet/throttled-tile-layer';
 import './leaflet/register-smooth-wheel-zoom';
+import { registerMobileMapTouch, mobileMapInteractionOptions } from './leaflet/register-mobile-map-touch';
 import { registerTrackpadPinchZoom } from './leaflet/register-trackpad-pinch-zoom';
 import { registerPinchPanHandoff } from './leaflet/register-pinch-pan-handoff';
+import { prefersNativeTouchPinch, prefersSmoothWheelZoom } from './leaflet/touch-capabilities';
 
 export type { MapLoadStatus } from './map-load-status';
 
@@ -139,25 +148,32 @@ export function mountVanillaPartnerMap(
   publishStatus('loading');
   logMap('Mounting map');
 
+  const useNativeTouchPinch = prefersNativeTouchPinch();
+  const useSmoothWheelZoom = prefersSmoothWheelZoom();
+  const touchOptions = mobileMapInteractionOptions();
+
   const map = L.map(container, {
     scrollWheelZoom: false,
-    smoothWheelZoom: 'center',
+    smoothWheelZoom: useSmoothWheelZoom ? 'center' : false,
     smoothSensitivity: 1,
     worldCopyJump: true,
     zoomAnimation: true,
     fadeAnimation: true,
-    zoomSnap: 0,
+    zoomSnap: touchOptions.zoomSnap,
     zoomDelta: 0.5,
     bounceAtZoomLimits: false,
     dragging: true,
     touchZoom: 'center',
     doubleClickZoom: 'center',
-    inertia: true,
-    tapTolerance: 18,
+    inertia: touchOptions.inertia,
+    inertiaDeceleration: touchOptions.inertiaDeceleration,
+    inertiaMaxSpeed: touchOptions.inertiaMaxSpeed,
+    tapTolerance: touchOptions.tapTolerance,
   }).setView(WORLD_VIEW_CENTER, WORLD_VIEW_ZOOM);
 
-  const removePinchPanHandoff = registerPinchPanHandoff(map);
-  const removeTrackpadPinchZoom = registerTrackpadPinchZoom(map);
+  const removeMobileMapTouch = registerMobileMapTouch(map);
+  const removePinchPanHandoff = useNativeTouchPinch ? registerPinchPanHandoff(map) : () => {};
+  const removeTrackpadPinchZoom = useSmoothWheelZoom ? registerTrackpadPinchZoom(map) : () => {};
 
   const publishZoom = () => {
     options.onZoomChange?.(map.getZoom());
@@ -249,9 +265,11 @@ export function mountVanillaPartnerMap(
     spiderfyOnMaxZoom: true,
     zoomToBoundsOnClick: true,
     disableClusteringAtZoom: DISABLE_CLUSTERING_AT_ZOOM,
-    maxClusterRadius: CLUSTER_RADIUS_PX,
+    maxClusterRadius: (zoom) => clusterRadiusForZoom(zoom),
     iconCreateFunction: (c) => createClusterBubbleIcon(c.getChildCount()),
   }).addTo(map);
+
+  const removeClusterZoomHandlers = attachPartnerPinClusterZoomHandlers(map, cluster);
 
   let placementMode = false;
 
@@ -264,6 +282,13 @@ export function mountVanillaPartnerMap(
   const onPopupClick = (e: MouseEvent) => {
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
+
+    const link = target.closest('a.partner-pin-popup__link');
+    if (link instanceof HTMLAnchorElement && link.href) {
+      e.preventDefault();
+      navigateTo(link.href);
+      return;
+    }
 
     const postButton = target.closest('.partner-pin-popup__post');
     if (postButton instanceof HTMLElement) {
@@ -311,20 +336,26 @@ export function mountVanillaPartnerMap(
   map.on('zoomend', publishZoom);
 
   const panToPin = (lat: number, lng: number) => {
-    map.panTo([lat, lng], { animate: true, duration: 0.45 });
+    panToPinView(map, lat, lng);
   };
 
   const syncPins = (pins: PartnerPin[], username: string | null) => {
     cluster.clearLayers();
     for (const pin of pins) {
       const isMine = !!username && pin.username === username;
-      const marker = L.marker([pin.lat, pin.lng], {
-        icon: createPartnerPinIcon(isMine),
-        riseOnHover: true,
-      });
+      const marker = stampPartnerMarkerOrigin(
+        L.marker([pin.lat, pin.lng], {
+          icon: createPartnerPinIcon(isMine),
+          riseOnHover: true,
+        }),
+        pin.lat,
+        pin.lng
+      );
       marker.bindPopup(buildPartnerPinPopupHtml(pin, isMine), {
         className: 'partner-pin-popup',
-        maxWidth: 280,
+        maxWidth: 252,
+        autoPan: false,
+        offset: [0, -6],
       });
       marker.on('click', () => {
         if (placementMode) return;
@@ -332,6 +363,8 @@ export function mountVanillaPartnerMap(
       });
       cluster.addLayer(marker);
     }
+    cluster.refreshClusters();
+    applyCoincidentPartnerPinSpread(cluster, map);
   };
 
   const setPlacementMode = (active: boolean) => {
@@ -346,6 +379,8 @@ export function mountVanillaPartnerMap(
   const destroy = () => {
     window.clearTimeout(tileFailureTimer);
     resizeObserver?.disconnect();
+    removeClusterZoomHandlers();
+    removeMobileMapTouch();
     removePinchPanHandoff();
     removeTrackpadPinchZoom();
     map.off('click', onMapClick);

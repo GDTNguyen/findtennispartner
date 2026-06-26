@@ -30,7 +30,6 @@ export function PartnerMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapHandleRef = useRef<VanillaPartnerMapHandle | null>(null);
   const [mapLoadStatus, setMapLoadStatus] = useState<MapLoadStatus>(INITIAL_MAP_LOAD_STATUS);
-  const [mapZoom, setMapZoom] = useState<number | null>(null);
   const onMapClickRef = useRef(onMapClick);
   const onDeletePinRef = useRef(onDeletePin);
   const onDraftPostRef = useRef(onDraftPost);
@@ -56,7 +55,6 @@ export function PartnerMap({
       onDeletePin: (pinId) => onDeletePinRef.current(pinId),
       onDraftPost: (pinId) => onDraftPostRef.current(pinId),
       onLoadStatusChange: setMapLoadStatus,
-      onZoomChange: setMapZoom,
     });
 
     return () => {
@@ -86,9 +84,6 @@ export function PartnerMap({
     <div className="partner-map-shell">
       <LocationSearch onSelect={handleLocationSelect} />
       <div ref={containerRef} className="partner-map-root" />
-      {mapZoom !== null ? (
-        <div className="partner-map-zoom-badge">Zoom {mapZoom.toFixed(1)}</div>
-      ) : null}
       <div
         className={`partner-map-load-status partner-map-load-status--${mapLoadTone}`}
         role="status"
