@@ -100,7 +100,6 @@ api.get('/map-tiles/:z/:x/:y', async (c) => {
   const z = c.req.param('z');
   const x = c.req.param('x');
   const y = c.req.param('y');
-  console.log('[find10spartner:map-tiles] Tile request', { z, x, y });
 
   try {
     const upstream = await fetchOsmBasemapTile(z, x, y);
@@ -108,18 +107,12 @@ api.get('/map-tiles/:z/:x/:y', async (c) => {
       return c.text('Invalid tile coordinates', 400);
     }
     if (!upstream.ok) {
-      console.error('[find10spartner:map-tiles] Proxy returning 404', {
-        z,
-        x,
-        y,
-        upstreamStatus: upstream.status,
-      });
-      return c.text('Tile not found', 404);
+      return c.text('Tile not found', upstream.status === 404 ? 404 : 502);
     }
 
     const body = await upstream.arrayBuffer();
-    c.header('Content-Type', 'image/png');
-    c.header('Cache-Control', 'public, max-age=86400');
+    c.header('Content-Type', upstream.headers.get('content-type') ?? 'image/png');
+    c.header('Cache-Control', upstream.headers.get('cache-control') ?? 'public, max-age=86400');
     return c.body(body);
   } catch (error) {
     console.error('[find10spartner:map-tiles] Map tile proxy error:', {

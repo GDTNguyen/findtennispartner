@@ -31,7 +31,8 @@ import {
 } from './map-load-status';
 import { reportMapLog } from './report-map-log';
 import { panToPinView } from './map-pin-view';
-import { createThrottledTileLayer } from './leaflet/throttled-tile-layer';
+import { createThrottledTileLayer, isIgnorableTileLoadError } from './leaflet/throttled-tile-layer';
+import { queueBasemapRefreshAfterLayout } from './leaflet/refresh-basemap-tiles';
 import './leaflet/register-smooth-wheel-zoom';
 import { registerMobileMapTouch, mobileMapInteractionOptions } from './leaflet/register-mobile-map-touch';
 import { registerTrackpadPinchZoom } from './leaflet/register-trackpad-pinch-zoom';
@@ -65,6 +66,7 @@ function logMap(message: string, detail?: Record<string, unknown>, level: 'info'
 }
 
 async function probeFailedTile(url: string) {
+  if (!url.trim()) return;
   try {
     const response = await fetch(url);
     const contentType = response.headers.get('content-type') ?? '';
@@ -101,7 +103,6 @@ async function probeFailedTile(url: string) {
 function remeasureLeafletMap(map: L.Map) {
   try {
     map.invalidateSize({ animate: false });
-    map.setView(map.getCenter(), map.getZoom(), { animate: false });
   } catch {
     /* Map may have been torn down. */
   }
@@ -161,7 +162,7 @@ export function mountVanillaPartnerMap(
     smoothSensitivity: 1,
     worldCopyJump: true,
     zoomAnimation: true,
-    fadeAnimation: true,
+    fadeAnimation: false,
     zoomSnap: touchOptions.zoomSnap,
     zoomDelta: 0.5,
     bounceAtZoomLimits: false,
@@ -199,9 +200,6 @@ export function mountVanillaPartnerMap(
   const tileLayer = createThrottledTileLayer(STANDARD_BASEMAP_URL, {
     maxZoom: 19,
     attribution: STANDARD_BASEMAP_ATTRIBUTION,
-    updateWhenZooming: true,
-    updateWhenIdle: true,
-    keepBuffer: 2,
   }).addTo(map);
 
   const reportTileStatus = () => {
@@ -216,6 +214,7 @@ export function mountVanillaPartnerMap(
 
   tileLayer.on('loading', () => {
     if (loadStatus.phase === 'loading') return;
+    if (tilesLoaded > 0) return;
     publishStatus('rendering');
     logMap('Basemap tiles loading');
   });
@@ -229,19 +228,26 @@ export function mountVanillaPartnerMap(
   });
 
   tileLayer.on('tileerror', (event) => {
+    if (isIgnorableTileLoadError(event)) return;
+
     tilesFailed += 1;
-    const url = event.tile.src;
+    const tile = event.tile;
+    const url =
+      tile instanceof HTMLImageElement
+        ? tile.dataset.tileUrl?.trim() || tile.src.trim()
+        : '';
     pushError({
       url,
       at: new Date().toISOString(),
-      message: 'Basemap tile failed to load',
+      message: event.error instanceof Error ? event.error.message : 'Basemap tile failed to load',
     });
     logMap('Basemap tile failed', {
       url,
       loaded: tilesLoaded,
       failed: tilesFailed,
+      error: event.error instanceof Error ? event.error.message : String(event.error),
     }, 'error');
-    if (tilesFailed === 1) {
+    if (tilesFailed === 1 && url) {
       void probeFailedTile(url);
     }
     reportTileStatus();
@@ -396,6 +402,9 @@ export function mountVanillaPartnerMap(
 
   const flyTo = (lat: number, lng: number, zoom = LOCATION_SEARCH_ZOOM) => {
     map.flyTo([lat, lng], zoom, { duration: 0.85 });
+    map.once('moveend', () => {
+      queueBasemapRefreshAfterLayout(map);
+    });
   };
 
   const destroy = () => {
